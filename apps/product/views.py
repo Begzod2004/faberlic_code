@@ -28,14 +28,14 @@ class GetFilterProductViewSet(viewsets.ModelViewSet):
     search_fields = ['translations__name']      #'translations__description'
     ordering_fields = ['created_at', 'name', 'type_product']
 
-    def get_queryset(self):
-        # Get the search query from the request
-        search_query = self.request.GET.get('search', '')
+    # def get_queryset(self):
+    #     # Get the search query from the request
+    #     search_query = self.request.GET.get('search', '')
 
-        # Perform the search and select related company data
-        queryset = Product.objects.filter(translations__name__icontains=search_query).select_related('company')
+    #     # Perform the search and select related company data
+    #     queryset = Product.objects.filter(translations__name__icontains=search_query).select_related('company')
 
-        return queryset
+    #     return queryset
 
 class ProductRatingViewSet(viewsets.ModelViewSet):
     queryset = ProductRating.objects.all().order_by(F('star').desc())

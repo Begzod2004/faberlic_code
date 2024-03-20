@@ -74,7 +74,6 @@ class ProductRetrieveSerializer(TranslatableModelSerializer):
         fields = "__all__"
         
 
-
 class GetProductSerializer(TranslatableModelSerializer):
     translations = TranslatedFieldsField(shared_model=Product)
     product_reviews = serializers.SerializerMethodField()
@@ -82,7 +81,19 @@ class GetProductSerializer(TranslatableModelSerializer):
     category = SubCategorySerializer(read_only=True)
     images = ProductImageSerializer(many=True, read_only=True)
 
+    def get_product_reviews(self, instance):
+        reviews = instance.productreview.all()  # Adjust the related name if necessary
+        return ProductRatingSerializer(reviews, many=True).data
 
+    def get_average_rating(self, instance):
+        ratings = ProductRating.objects.filter(product=instance)
+        avg_rating = ratings.aggregate(Avg('star'))['star__avg']
+        return avg_rating
+    
+    def get_related_products(self, instance):
+        # Assuming 'category' is a ForeignKey in your Product model
+        related_products = Product.objects.filter(category=instance.category).exclude(id=instance.id)[:5]  # Get 5 related products
+        return ProductSerializer(related_products, many=True, context=self.context).data
 
     def to_representation(self, instance):
         serialized_product = super().to_representation(instance)
@@ -92,6 +103,3 @@ class GetProductSerializer(TranslatableModelSerializer):
     class Meta:
         model = Product
         fields = "__all__"
-
-
-

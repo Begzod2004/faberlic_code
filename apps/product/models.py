@@ -9,7 +9,7 @@ from django.contrib.auth.models import User
 class Category(TranslatableModel):
     translations = TranslatedFields(
         name=models.CharField(max_length=255, verbose_name=_('Name')),
-        description=RichTextField(),
+        description=RichTextField(default=None),
 
     )
     image = models.ImageField(upload_to='category_images', verbose_name=_('Rasm'))
@@ -50,7 +50,7 @@ class Product(TranslatableModel):
     rec_category = models.ForeignKey(RecCategory, on_delete=models.CASCADE, verbose_name=_('Rekamindatsiya Kategoriyasi'))
     category = models.ForeignKey(Category, on_delete=models.CASCADE, verbose_name=_('Product Kategory'))
     created_at = models.DateTimeField(auto_now_add=True, verbose_name=_('Created at'))
-    price = models.DecimalField(max_digits=7, decimal_places=2, verbose_name=_('Narxi'))  # Narx maydoni qo'shildi
+    price = models.DecimalField(max_digits=10, decimal_places=2, verbose_name=_('Narxi'))  # Narx maydoni qo'shildi
     updated_at = models.DateTimeField(auto_now=True, verbose_name=_('Updated at'))
     is_featured = models.BooleanField(default=False)
 

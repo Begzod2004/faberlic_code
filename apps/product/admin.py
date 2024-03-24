@@ -11,7 +11,7 @@ class CategoryAdmin(TranslatableAdmin):
     list_per_page = 20
     fieldsets = (
         (None, {
-            'fields': ('name', 'image'),
+            'fields': ('name', 'description', 'image'),
         }),
     )
 

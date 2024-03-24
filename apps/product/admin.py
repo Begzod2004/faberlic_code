@@ -1,5 +1,5 @@
 from django.contrib import admin
-from .models import Category, Product, SubCategory, ProductImage, Order, OrderItem, ProductRating
+from .models import Category, Product, RecCategory, ProductImage, Order, OrderItem, ProductRating
 
 from parler.admin import TranslatableAdmin
 from django.utils.html import format_html
@@ -25,19 +25,20 @@ class ProductImageInline(admin.TabularInline):
 
 class ProductAdmin(TranslatableAdmin):
     inlines = [ProductImageInline]
-    list_display = ['name', 'created_at','short_description', 'is_featured']
+    list_display = ['name', 'category', 'created_at','short_description', 'price', 'is_featured']
     list_display_links = ['name']
-    search_fields = ['name',  'tag'] 
+    search_fields = ['name', 'category__name', 'tag']  # Use 'category__name' for searching by category name
     list_per_page = 20
     readonly_fields = ('created_at', 'updated_at',)
 
 
 
     fieldsets = (
-        (None, {
-            'fields': ('name','description', 'tag', 'category',  'is_featured', 'short_description'),
-        },),
-    )
+    (None, {
+        'fields': ('name', 'price', 'description', 'tag', 'category', 'rec_category', 'is_featured', 'short_description'),
+    },),
+)
+
 
 admin.site.register(Product, ProductAdmin)
 
@@ -58,20 +59,20 @@ class ProductRatingAdmin(admin.ModelAdmin):
     readonly_fields = ['review_date']
 
 
-class SubCategoryAdmin(TranslatableAdmin):
-    list_display = ['name', 'category', 'is_active']
+class RecCategoryAdmin(TranslatableAdmin):
+    list_display = ['name', 'is_active']
     list_display_links = ['name']
-    search_fields = ['name', 'category__name']
-    list_filter = ['category', 'is_active']
+    search_fields = ['name']
+    list_filter = ['is_active']
     list_per_page = 20
 
     fieldsets = (
         (None, {
-            'fields': ('name', 'category', 'is_active'),
+            'fields': ('name','is_active'),
         }),
     )
 
-admin.site.register(SubCategory, SubCategoryAdmin)
+admin.site.register(RecCategory, RecCategoryAdmin)
 
 
 

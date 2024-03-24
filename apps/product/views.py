@@ -1,6 +1,6 @@
 from rest_framework import viewsets, filters
-from .serializers import  ProductSerializer, SubCategorySerializer, GetProductSerializer, ProductRatingSerializer
-from .models import Product, SubCategory, ProductRating
+from .serializers import  ProductSerializer, RecCategorySerializer, GetProductSerializer, ProductRatingSerializer
+from .models import Product, RecCategory, ProductRating
 from .filters import ProductFilter
 from rest_framework.filters import SearchFilter
 from .models import Category
@@ -17,9 +17,9 @@ class CategoryViewSet(viewsets.ModelViewSet):
     serializer_class = CategorySerializer
     http_method_names = ['get', 'head', 'options']
 
-class SubCategoryViewSet(viewsets.ModelViewSet):
-    queryset = SubCategory.objects.all()
-    serializer_class = SubCategorySerializer
+class RecCategoryViewSet(viewsets.ModelViewSet):
+    queryset = RecCategory.objects.all()
+    serializer_class = RecCategorySerializer
 
 class GetFilterProductViewSet(viewsets.ModelViewSet):
     queryset = Product.objects.all()

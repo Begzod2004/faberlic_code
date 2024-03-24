@@ -1,31 +1,30 @@
 from rest_framework import serializers
 from parler_rest.serializers import TranslatableModelSerializer
 from parler_rest.fields import TranslatedFieldsField
-from .models import  Product, Category, SubCategory, ProductImage, ProductRating
+from .models import  Product, Category, RecCategory, ProductImage, ProductRating
 from rest_framework import serializers
 from django.db.models import Avg
 
 
-class SubCategorySerializer(TranslatableModelSerializer):
-    translations = TranslatedFieldsField(shared_model=SubCategory)
+class RecCategorySerializer(TranslatableModelSerializer):
+    translations = TranslatedFieldsField(shared_model=RecCategory)
     
     class Meta:
-        model = SubCategory
+        model = RecCategory
         fields = '__all__'
 
 
 class CategorySerializer(TranslatableModelSerializer):
     translations = TranslatedFieldsField(shared_model=Category)
-    subcategories = SubCategorySerializer(many=True, read_only=True)
 
     class Meta:
         model = Category
         fields = '__all__'
         ref_name = 'CategorySerializer'
 
-    def get_subcategory(self, category_instance):
-        subcategories = SubCategory.objects.filter(category=category_instance)
-        serializer = SubCategorySerializer(subcategories, many=True)
+    def get_reccategory(self, category_instance):
+        reccategories = RecCategory.objects.filter(category=category_instance)
+        serializer = RecCategorySerializer(reccategories, many=True)
         return serializer.data
     
 
@@ -37,7 +36,7 @@ class ProductImageSerializer(serializers.ModelSerializer):
     
 class ProductSerializer(TranslatableModelSerializer):
     translations = TranslatedFieldsField(shared_model=Product)
-    category = SubCategorySerializer(read_only=True)
+    category = RecCategorySerializer(read_only=True)
     images = ProductImageSerializer(many=True, read_only=True)
 
     class Meta:
@@ -56,7 +55,7 @@ class ProductRetrieveSerializer(TranslatableModelSerializer):
     translations = TranslatedFieldsField(shared_model=Product)
     product_reviews = serializers.SerializerMethodField()
     average_rating = serializers.SerializerMethodField()
-    category = SubCategorySerializer(read_only=True)
+    category = RecCategorySerializer(read_only=True)
     images = ProductImageSerializer(many=True, read_only=True)
 
     def get_product_reviews(self, instance):
@@ -78,7 +77,8 @@ class GetProductSerializer(TranslatableModelSerializer):
     translations = TranslatedFieldsField(shared_model=Product)
     product_reviews = serializers.SerializerMethodField()
     average_rating = serializers.SerializerMethodField()
-    category = SubCategorySerializer(read_only=True)
+    rec_category = RecCategorySerializer(read_only=True)  # Bu yerda o'zgartirish qilindi
+    category = RecCategorySerializer(read_only=True)
     images = ProductImageSerializer(many=True, read_only=True)
 
     def get_product_reviews(self, instance):
@@ -91,7 +91,6 @@ class GetProductSerializer(TranslatableModelSerializer):
         return avg_rating
     
     def get_related_products(self, instance):
-        # Assuming 'category' is a ForeignKey in your Product model
         related_products = Product.objects.filter(category=instance.category).exclude(id=instance.id)[:5]  # Get 5 related products
         return ProductSerializer(related_products, many=True, context=self.context).data
 

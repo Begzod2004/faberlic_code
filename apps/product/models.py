@@ -5,7 +5,7 @@ from parler.models import TranslatableModel, TranslatedFields
 from ckeditor.fields import RichTextField
 from django.contrib.auth.models import User
 
-# Sizning mavjud kategoriyalar va subkategoriyalar uchun modellaringiz
+
 class Category(TranslatableModel):
     translations = TranslatedFields(
         name=models.CharField(max_length=255, verbose_name=_('Name')),
@@ -16,38 +16,39 @@ class Category(TranslatableModel):
     def __str__(self):
         return self.name
     
-    def subcategories(self):
-        return SubCategory.objects.filter(category=self)
+    def reccategories(self):
+        return RecCategory.objects.filter(category=self)
     
     class Meta:
         verbose_name = _('Category')
         verbose_name_plural = _('Categories')
 
 
-class SubCategory(TranslatableModel):
+class RecCategory(TranslatableModel):
     translations = TranslatedFields(
         name=models.CharField(max_length=255, verbose_name=_('Name')),
     )
-    category = models.ForeignKey(Category, on_delete=models.CASCADE, verbose_name=_('Parent Category'))
     is_active = models.BooleanField(default=True)
 
     def __str__(self):
         return self.name    
 
     class Meta:
-        verbose_name = _('Subcategory')
-        verbose_name_plural = _('Subcategories')
+        verbose_name = _('Reccategory')
+        verbose_name_plural = _('Reccategories')
 
 # Mahsulot modeli
 class Product(TranslatableModel):
     translations = TranslatedFields(
         name=models.CharField(max_length=300, verbose_name=_('Nomi')),
         description=RichTextField(),
-        tag=models.TextField(verbose_name=_('Tag')),
+        tag=models.TextField(verbose_name=_('Tag'), default='Women'),
         short_description=models.CharField(max_length=300, null=True, blank=True, default="NEW"),
     )
-    category = models.ForeignKey(SubCategory, on_delete=models.CASCADE, verbose_name=_('Kategorylari'))
+    rec_category = models.ForeignKey(RecCategory, on_delete=models.CASCADE, verbose_name=_('Rekamindatsiya Kategoriyasi'))
+    category = models.ForeignKey(Category, on_delete=models.CASCADE, verbose_name=_('Product Kategory'))
     created_at = models.DateTimeField(auto_now_add=True, verbose_name=_('Created at'))
+    price = models.DecimalField(max_digits=7, decimal_places=2, verbose_name=_('Narxi'))  # Narx maydoni qo'shildi
     updated_at = models.DateTimeField(auto_now=True, verbose_name=_('Updated at'))
     is_featured = models.BooleanField(default=False)
 

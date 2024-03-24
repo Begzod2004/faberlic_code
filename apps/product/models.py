@@ -9,6 +9,8 @@ from django.contrib.auth.models import User
 class Category(TranslatableModel):
     translations = TranslatedFields(
         name=models.CharField(max_length=255, verbose_name=_('Name')),
+        description=RichTextField(),
+
     )
     image = models.ImageField(upload_to='category_images', verbose_name=_('Rasm'))
     is_active = models.BooleanField(default=True)

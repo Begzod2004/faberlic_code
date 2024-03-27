@@ -1,5 +1,5 @@
 from django.contrib import admin
-from account.models import Account
+from apps.account.models import Account
 
 
 class AccountAdmin(admin.ModelAdmin):

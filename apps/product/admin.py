@@ -68,7 +68,7 @@ class RecCategoryAdmin(TranslatableAdmin):
 
     fieldsets = (
         (None, {
-            'fields': ('name','is_active'),
+            'fields': ('name', 'image', 'is_active'),
         }),
     )
 

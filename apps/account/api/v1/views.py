@@ -11,13 +11,13 @@ from rest_framework.response import Response
 from rest_framework.views import APIView
 from rest_framework_simplejwt.tokens import RefreshToken
 
-from account.api.v1.permissions import IsOwnUserOrReadOnly
-# from account.api.v1.permissions import IsOwnUserOrReadOnly
-from account.api.v1.serializers import RegisterSerializer, LoginSerializer, AccountUpdateSerializer, \
+from apps.account.api.v1.permissions import IsOwnUserOrReadOnly
+# from apps.account.api.v1.permissions import IsOwnUserOrReadOnly
+from apps.account.api.v1.serializers import RegisterSerializer, LoginSerializer, AccountUpdateSerializer, \
     AccountOwnImageUpdateSerializer, SetNewPasswordSerializer, EmailVerificationSerializer, ResetPasswordSerializer, \
     ChangeNewPasswordSerializer
-from account.api.v1.utils import Util
-from account.models import Account
+from apps.account.api.v1.utils import Util
+from apps.account.models import Account
 
 
 class AccountRegisterView(generics.GenericAPIView):
@@ -38,20 +38,19 @@ class AccountRegisterView(generics.GenericAPIView):
         token = RefreshToken.for_user(user)
 
         # activate account with email
-        current_site = 'localhost:8000/'
+        current_site = 'makssss.pythonanywhere.com'
         relative_link = 'account/v1/verify-email/'
-        abs_url = f'http://{current_site}{relative_link}?token={str(token.access_token)}'
-        email_body = f'Hi, {user.email} \n User link below to activate your email \n {abs_url}'
+        abs_url = f'https://{current_site}/{relative_link}?token={str(token)}'  # HTTPS va tokenni yaxshilab tekshiring
+        email_body = f'Hi {user.email},\nPlease use the link below to activate your email:\n{abs_url}'
+
         data = {
             'to_email': user.email,
-            'email_subject': 'Activate email to Pharma',
+            'email_subject': 'Activate your email',
             'email_body': email_body
         }
         Util.send_email(data)
 
-        return Response({'success': True, 'message': 'Activate url was sent your email'},
-                        status=status.HTTP_201_CREATED)
-
+        return Response({'success': True, 'message': 'Activation link has been sent to your email'}, status=status.HTTP_201_CREATED)
 
 class EmailVerificationAPIView(APIView):
     # http://127.0.0.1:8000/account/verify-email/?token={token}/
@@ -147,12 +146,9 @@ class ResetPasswordAPIView(generics.GenericAPIView):
 
     def post(self, request):
         user = Account.objects.filter(email=request.data['email']).first()
-        print(3333333333333)
 
         if user:
-            print(111111111111)
             uidb64 = urlsafe_base64_encode(smart_bytes(user.id))
-            print(2222222)
             token = PasswordResetTokenGenerator().make_token(user)
             current_site = 'localhost:8000/'
             abs_url = f'http://{current_site}account/v1/set-password-confirm/{uidb64}/{token}/'

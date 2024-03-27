@@ -1,5 +1,5 @@
 from django.urls import path, include
-from account.api.v1.views import AccountView, AccountRegisterView, LoginView, SetNewPasswordView, \
+from apps.account.api.v1.views import AccountView, AccountRegisterView, LoginView, SetNewPasswordView, \
     SetPasswordConfirmAPIView, ResetPasswordAPIView, AccountListView, AccountRetrieveUpdateView, \
     AccountOwnImageUpdateView, EmailVerificationAPIView, ChangePasswordCompletedView
 

@@ -6,9 +6,9 @@ from django.utils.http import urlsafe_base64_decode
 from rest_framework import serializers
 from rest_framework.exceptions import AuthenticationFailed
 
-from account.models import Account
+from apps.account.models import Account
 
-from django.utils.encoding import smart_str, force_str, DjangoUnicodeDecodeError
+from django.utils.encoding import  smart_str, force_str, DjangoUnicodeDecodeError
 from django.utils.encoding import smart_bytes
 
 

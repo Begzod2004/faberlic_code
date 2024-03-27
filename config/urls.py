@@ -13,12 +13,12 @@ from rest_framework_simplejwt.views import (
 
 schema_view = get_schema_view(
     openapi.Info(
-        title="B2B Token",
+        title="Faberlic Token",
         default_version='v1',
         description="Mall official site description",
         terms_of_service="https://www.google.com/policies/terms/",
         contact=openapi.Contact(email="contact@snippets.local"),
-        license=openapi.License(name="BSD License"),
+        license=openapi.License(name="Faberlic License"),
     ),
     public=True,
     permission_classes=[permissions.AllowAny],
@@ -39,8 +39,11 @@ urlpatterns += [
     # admin
     path('admin/', admin.site.urls),
     # local urls
+    path('account/', include('apps.account.api.urls')),
     path('product/', include('apps.product.urls')),
     path('blog/', include('apps.blog.urls')),
+    path('order/', include('apps.order.api.urls')),
+
     # path('order/', include('apps.order.api.urls')),
 ]
 

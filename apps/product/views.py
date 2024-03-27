@@ -10,6 +10,8 @@ from .serializers import CategorySerializer
 from .filters import ProductFilter  # Filterni import qiling
 from django.http import JsonResponse
 from django_filters.rest_framework import DjangoFilterBackend
+from rest_framework.parsers import FormParser, MultiPartParser
+
 
 
 class CategoryViewSet(viewsets.ModelViewSet):
@@ -23,6 +25,7 @@ class RecCategoryViewSet(viewsets.ModelViewSet):
 
 class GetFilterProductViewSet(viewsets.ModelViewSet):
     queryset = Product.objects.all()
+    parser_classes = (FormParser, MultiPartParser)   
     serializer_class = GetProductSerializer
     filter_backends = [filters.SearchFilter]
     search_fields = ['translations__name']      #'translations__description'

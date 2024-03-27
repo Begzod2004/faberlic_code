@@ -30,6 +30,7 @@ class RecCategory(TranslatableModel):
     translations = TranslatedFields(
         name=models.CharField(max_length=255, verbose_name=_('Name')),
     )
+    image = models.ImageField(upload_to='recctegory_images', verbose_name=_('Rasm'), blank=True, null=True)
     is_active = models.BooleanField(default=True)
 
     def __str__(self):

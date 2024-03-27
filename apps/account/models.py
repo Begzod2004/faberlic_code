@@ -4,6 +4,7 @@ from django.utils.safestring import mark_safe
 # from django.utils.translation import gettext_lazy as _
 from django.conf import settings
 from rest_framework_simplejwt.tokens import RefreshToken
+from django.contrib.auth.models import Group, Permission
 
 
 class AccountManager(BaseUserManager):
@@ -38,7 +39,7 @@ class Account(AbstractBaseUser, PermissionsMixin):
         verbose_name_plural = 'Accounts'
 
     email = models.EmailField(max_length=50, unique=True, verbose_name='Email', db_index=True, null=True)
-    full_name = models.CharField(max_length=50, verbose_name='Full name', null=True)
+    full_name = models.CharField(max_length=50, verbose_name='Full name', null=False)
     phone = models.CharField(max_length=16, verbose_name='Phone Number', null=True)
     image = models.ImageField(upload_to='accounts/', verbose_name='Account image', null=True, blank=True)
     is_superuser = models.BooleanField(default=False, verbose_name='Super user')
@@ -46,10 +47,26 @@ class Account(AbstractBaseUser, PermissionsMixin):
     is_active = models.BooleanField(default=True, verbose_name='Active user')
     date_modified = models.DateTimeField(auto_now=True, verbose_name='Date modified')
     date_created = models.DateTimeField(auto_now_add=True, verbose_name='Date created')
+    groups = models.ManyToManyField(
+        Group,
+        verbose_name='user groups',
+        blank=True,
+        help_text='The groups this user belongs to. A user will get all permissions granted to each of their groups.',
+        related_name="account_user_set",  # Unique related_name
+        related_query_name="account_user",
+    )
+    user_permissions = models.ManyToManyField(
+        Permission,
+        verbose_name='user specific permissions',
+        blank=True,
+        help_text='Specific permissions for this user.',
+        related_name="account_permission_set",  # Unique related_name
+        related_query_name="account_permission",
+    )
 
     objects = AccountManager()
 
-    EMAIL_FIELD = 'email'   
+    EMAIL_FIELD = 'email'
     USERNAME_FIELD = 'email'
     REQUIRED_FIELDS = []
 

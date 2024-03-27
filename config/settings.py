@@ -55,7 +55,8 @@ INSTALLED_APPS = [
 
     # local
     
-    # 'apps.account',
+    'apps.account',
+    'apps.order',
     'apps.product',
     'apps.blog',
 
@@ -181,7 +182,7 @@ AUTH_PASSWORD_VALIDATORS = [
 
 LANGUAGE_CODE = 'en-us'
 
-TIME_ZONE = 'UTC'
+TIME_ZONE = 'Asia/Tashkent'
 
 USE_I18N = True
 
@@ -222,7 +223,6 @@ REST_FRAMEWORK = {
 SPECTACULAR_SETTINGS = {
     'COMPONENT_SPLIT_REQUEST': True,
 }
-
 PARLER_LANGUAGES = {
     None: (
         {'code': 'ru'},
@@ -234,6 +234,28 @@ PARLER_LANGUAGES = {
         'hide_untranslated': False,
     }
 }
+
+
+
+# EMAIL_BACKEND = 'django.core.mail.backends.smtp.EmailBackend'
+# EMAIL_USE_TLS = True
+# EMAIL_HOST = 'smtp.gmail.com'
+# EMAIL_PORT = 587
+# EMAIL_HOST_USER = 'ozodbekyakhshiboevman@gmail.com'
+# EMAIL_HOST_PASSWORD = 'imksaktvkxxebnii'
+
+
+
+EMAIL_BACKEND = 'django.core.mail.backends.smtp.EmailBackend'
+EMAIL_USE_TLS = True
+EMAIL_HOST = 'smtp.gmail.com'
+EMAIL_PORT = 587
+EMAIL_HOST_USER = 'mrzaqulovbegzod@gmail.com'
+EMAIL_HOST_PASSWORD = 'lrkahalnlrqouubm'
+
+
+
+
 
 SIMPLE_JWT = {
     'ACCESS_TOKEN_LIFETIME': timedelta(days=7),
@@ -304,13 +326,13 @@ JAZZMIN_UI_TWEAKS = {
 JAZZMIN_SETTINGS = {
     "topmenu_links"
     # title of the window (Will default to current_admin_site.site_title if absent or None)
-    "site_title": "B2B",
+    "site_title": "Faberlic",
 
     # Title on the login screen (19 chars max) (defaults to current_admin_site.site_header if absent or None)
-    "site_header": "B2B Admin",
+    "site_header": "Faberlic Admin",
 
     # Title on the brand (19 chars max) (defaults to current_admin_site.site_header if absent or None)
-    "site_brand": "B2B",
+    "site_brand": "Faberlic",
 
     # Logo to use for your site, must be present in static files, used for brand on top left
     # "site_logo": "img\logo.png",
@@ -326,10 +348,10 @@ JAZZMIN_SETTINGS = {
     "site_icon": None,
 
     # Welcome text on the login screen
-    "welcome_sign": "Welcome to B2B!",
+    "welcome_sign": "Welcome to Faberlic!",
 
     # Copyright on the footer
-    "copyright": "B2B contributors",
+    "copyright": "Faberlic contributors",
 
     # # The model admin to search from the search bar, search bar omitted if excluded
     # "search_model": "myprint.Product",
@@ -360,7 +382,7 @@ JAZZMIN_SETTINGS = {
 
     # Additional links to include in the user menu on the top right ("app" url type is not allowed)
     "usermenu_links": [
-        {"name": "Support", "url": "https://t.me/rakhimov_shukurullo", "new_window": True},
+        {"name": "Support", "url": "https://t.me/sql", "new_window": True},
         {"model": "auth.user"}
     ],
 

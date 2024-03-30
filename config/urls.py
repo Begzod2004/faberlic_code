@@ -4,7 +4,11 @@ from django.conf import settings
 from django.conf.urls.static import static
 from rest_framework import permissions
 from drf_yasg.views import get_schema_view
+from rest_framework.decorators import api_view, permission_classes
 from drf_yasg import openapi
+from rest_framework.permissions import AllowAny
+from rest_framework.authentication import SessionAuthentication, BasicAuthentication
+
 
 from rest_framework_simplejwt.views import (
     TokenObtainPairView,
@@ -12,18 +16,17 @@ from rest_framework_simplejwt.views import (
 )
 
 schema_view = get_schema_view(
-    openapi.Info(
-        title="Faberlic Token",
-        default_version='v1',
-        description="Mall official site description",
-        terms_of_service="https://www.google.com/policies/terms/",
-        contact=openapi.Contact(email="contact@snippets.local"),
-        license=openapi.License(name="Faberlic License"),
-    ),
-    public=True,
-    permission_classes=[permissions.AllowAny],
+   openapi.Info(
+      title="API Title",
+      default_version='v1',
+      description="API Description",
+      terms_of_service="https://www.google.com/policies/terms/",
+      contact=openapi.Contact(email="contact@yourapi.com"),
+      license=openapi.License(name="BSD License"),
+   ),
+   public=True,
+   permission_classes=(permissions.AllowAny,),
 )
-
 urlpatterns = [
     # swagger
     path('', schema_view.with_ui('swagger', cache_timeout=0), name='schema-swagger-ui'),
@@ -39,13 +42,20 @@ urlpatterns += [
     # admin
     path('admin/', admin.site.urls),
     # local urls
-    path('account/', include('apps.account.api.urls')),
+    # path('account/', include('apps.account.api.urls')),
+    path('account/', include('apps.account.urls')),
     path('product/', include('apps.product.urls')),
     path('blog/', include('apps.blog.urls')),
     path('order/', include('apps.order.api.urls')),
 
     # path('order/', include('apps.order.api.urls')),
 ]
+
+
+@api_view(['GET'])
+@permission_classes([AllowAny])
+def swagger_view(request):
+    return schema_view.with_ui('swagger', cache_timeout=0)(request)
 
 if settings.DEBUG:
     urlpatterns += static(settings.STATIC_URL, document_root=settings.STATIC_ROOT)

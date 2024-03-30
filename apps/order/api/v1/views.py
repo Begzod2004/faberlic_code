@@ -18,7 +18,7 @@ from rest_framework.response import Response
 from rest_framework.generics import ListAPIView, CreateAPIView, UpdateAPIView, DestroyAPIView
 from .serializers import *
 from rest_framework.parsers import FormParser, MultiPartParser
-from apps.account.models import Account
+# from apps.account.models import User
 # Create your views here.
 
 
@@ -47,7 +47,7 @@ class OrderCreateAPIView(CreateAPIView):
         orderitem = request.data.get("orderitem")
         data = request.data
         user = request.user
-        # user = Account.objects.first()
+        # user = User.first()
         data['user'] = user
         serializer = self.get_serializer(data = data, context ={"user":user} )
         if serializer.is_valid():
@@ -55,8 +55,6 @@ class OrderCreateAPIView(CreateAPIView):
             headers = self.get_success_headers(serializer.data)
             return Response(serializer.data, status=status.HTTP_201_CREATED, headers=headers)
         return Response(data = serializer.errors, status=status.HTTP_400_BAD_REQUEST)
-
-
 
 
 class OrderItemListAPIView(ListAPIView):

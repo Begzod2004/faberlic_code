@@ -1,26 +1,26 @@
-from rest_framework import permissions
+# from rest_framework import permissions
 
 
-class IsOwnUserOrReadOnly(permissions.BasePermission):
-    """
-    Object-level permission to only allow owners of an object to edit it.
-    Assumes the model instance has an `owner` attribute.
-    """
+# class IsOwnUserOrReadOnly(permissions.BasePermission):
+#     """
+#     Object-level permission to only allow owners of an object to edit it.
+#     Assumes the model instance has an `owner` attribute.
+#     """
 
-    def has_object_permission(self, request, view, obj):
-        # Read permissions are allowed to any request,
-        # so we'll always allow GET, HEAD or OPTIONS requests.
-        if request.method in permissions.SAFE_METHODS:
-            return True
+#     def has_object_permission(self, request, view, obj):
+#         # Read permissions are allowed to any request,
+#         # so we'll always allow GET, HEAD or OPTIONS requests.
+#         if request.method in permissions.SAFE_METHODS:
+#             return True
 
-        # Instance must have an attribute named `owner`.
-        return obj.id == request.user.id
+#         # Instance must have an attribute named `owner`.
+#         return obj.id == request.user.id
 
 
-class IsAuthenticated(permissions.IsAuthenticated):
-    """
-    Allows access only to authenticated users.
-    """
+# class IsAuthenticated(permissions.IsAuthenticated):
+#     """
+#     Allows access only to authenticated users.
+#     """
 
-    def has_permission(self, request, view):
-        return bool(request.user.is_active)
+#     def has_permission(self, request, view):
+#         return bool(request.user.is_active)

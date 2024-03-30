@@ -1,99 +1,78 @@
+# from django.utils.translation import gettext_lazy as _  # Qo'shilgan qator
+# from django.db import models
+# from django.contrib.auth.models import AbstractBaseUser, BaseUserManager, PermissionsMixin
+# from django.utils import timezone
+
+# class UserManager(BaseUserManager):
+#     def create_user(self, email, password=None, **extra_fields):
+#         if not email:
+#             raise ValueError('The Email field must be set')
+#         email = self.normalize_email(email)
+#         user = self.model(email=email, **extra_fields)
+#         user.set_password(password)
+#         user.save(using=self._db)
+#         return user
+
+#     def create_superuser(self, email, password=None, **extra_fields):
+#         extra_fields.setdefault('is_staff', True)
+#         extra_fields.setdefault('is_superuser', True)
+
+#         return self.create_user(email, password, **extra_fields)
+
+# from django.contrib.auth.models import User
+# from django.db import models
+
+# class User(AbstractBaseUser, PermissionsMixin):
+#     email = models.EmailField(unique=True)
+#     is_active = models.BooleanField(default=True)
+#     is_staff = models.BooleanField(default=False)
+#     verification_code = models.CharField(max_length=6, blank=True, null=True)  # Tasdiqlash kodini saqlash uchun maydon
+#     code_sent_at = models.DateTimeField(null=True, blank=True)  # Kod yuborilgan vaqtni saqlash uchun maydon
+
+#     objects = UserManager()
+
+#     USERNAME_FIELD = 'email'
+#     REQUIRED_FIELDS = []
+
+#      # `groups` va `user_permissions` uchun `related_name` qo'shish
+#     groups = models.ManyToManyField(
+#         'auth.Group',
+#         verbose_name=_('groups'),
+#         blank=True,
+#         related_name="%(app_label)s_%(class)s_groups",  # Bu yerda o'zgartirish
+#         related_query_name="%(app_label)s_%(class)s",
+#     )
+#     user_permissions = models.ManyToManyField(
+#         'auth.Permission',
+#         verbose_name=_('user permissions'),
+#         blank=True,
+#         related_name="%(app_label)s_%(class)s_user_permissions",  # Bu yerda o'zgartirish
+#         related_query_name="%(app_label)s_%(class)s",
+#     )
+
+#     def __str__(self):
+#         return self.email
+
+#     def __str__(self):
+#         return self.email
+
+
 from django.db import models
-from django.contrib.auth.models import AbstractBaseUser, BaseUserManager, PermissionsMixin
-from django.utils.safestring import mark_safe
-# from django.utils.translation import gettext_lazy as _
-from django.conf import settings
-from rest_framework_simplejwt.tokens import RefreshToken
-from django.contrib.auth.models import Group, Permission
+from django.contrib.auth.models import User
+from django.db.models.signals import post_save
+from django.dispatch import receiver
 
-
-class AccountManager(BaseUserManager):
-    def create_user(self, email, password=None, **extra_fields):
-        if email is None:
-            raise TypeError('User should have a username')
-
-        user = self.model(email=email, **extra_fields)
-        user.set_password(password)
-        user.save(using=self._db)
-        return user
-
-    def create_superuser(self, email, password=None, **extra_fields):
-        if password is None:
-            raise TypeError('Password should not be None')
-
-        user = self.create_user(
-            email=email,
-            password=password,
-            **extra_fields,
-        )
-        user.is_superuser = True
-        user.is_staff = True
-        user.is_active = True
-        user.save(using=self._db)
-        return user
-
-
-class Account(AbstractBaseUser, PermissionsMixin):
-    class Meta:
-        verbose_name = 'Account'
-        verbose_name_plural = 'Accounts'
-
-    email = models.EmailField(max_length=50, unique=True, verbose_name='Email', db_index=True, null=True)
-    full_name = models.CharField(max_length=50, verbose_name='Full name', null=False)
-    phone = models.CharField(max_length=16, verbose_name='Phone Number', null=True)
-    image = models.ImageField(upload_to='accounts/', verbose_name='Account image', null=True, blank=True)
-    is_superuser = models.BooleanField(default=False, verbose_name='Super user')
-    is_staff = models.BooleanField(default=False, verbose_name='Staff user')
-    is_active = models.BooleanField(default=True, verbose_name='Active user')
-    date_modified = models.DateTimeField(auto_now=True, verbose_name='Date modified')
-    date_created = models.DateTimeField(auto_now_add=True, verbose_name='Date created')
-    groups = models.ManyToManyField(
-        Group,
-        verbose_name='user groups',
-        blank=True,
-        help_text='The groups this user belongs to. A user will get all permissions granted to each of their groups.',
-        related_name="account_user_set",  # Unique related_name
-        related_query_name="account_user",
-    )
-    user_permissions = models.ManyToManyField(
-        Permission,
-        verbose_name='user specific permissions',
-        blank=True,
-        help_text='Specific permissions for this user.',
-        related_name="account_permission_set",  # Unique related_name
-        related_query_name="account_permission",
-    )
-
-    objects = AccountManager()
-
-    EMAIL_FIELD = 'email'
-    USERNAME_FIELD = 'email'
-    REQUIRED_FIELDS = []
+class UserProfile(models.Model):
+    user = models.OneToOneField(User, on_delete=models.CASCADE, related_name='profile')
+    verification_code = models.CharField(max_length=16, blank=True, null=True)
+    is_email_verified = models.BooleanField(default=False)
 
     def __str__(self):
-        if self.full_name:
-            return f'{self.full_name} ({self.email})'
-        return f'{self.email}'
+        return f'{self.user.email} Profile'
 
-    def image_tag(self):
-        if self.image:
-            return mark_safe(f'<a href="{self.image.url}"><img src="{self.image.url}" style="height:40px;"/></a>')
-        return 'no_image'
+@receiver(post_save, sender=User)
+def create_or_update_user_profile(sender, instance, created, **kwargs):
+    if created:
+        UserProfile.objects.create(user=instance)
+    instance.profile.save()
 
-    @property
-    def image_url(self):
-        if self.image:
-            if settings.DEBUG:
-                return f'{settings.LOCAL_BASE_URL}{self.image.url}'
-            return f'{settings.PROD_BASE_URL}{self.image.url}'
-        else:
-            return None
-
-    @property
-    def tokens(self):
-        refresh = RefreshToken.for_user(self)
-        data = {
-            'refresh': str(refresh),
-            'access': str(refresh.access_token)
-        }
-        return data

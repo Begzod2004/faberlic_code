@@ -43,10 +43,10 @@ urlpatterns += [
     path('admin/', admin.site.urls),
     # local urls
     # path('account/', include('apps.account.api.urls')),
-    path('account/', include('apps.account.urls')),
+    path('accounts/', include('apps.accounts.urls')),
     path('product/', include('apps.product.urls')),
     path('blog/', include('apps.blog.urls')),
-    path('order/', include('apps.order.api.urls')),
+    # path('order/', include('apps.order.api.urls')),
 
     # path('order/', include('apps.order.api.urls')),
 ]

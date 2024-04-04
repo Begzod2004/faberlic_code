@@ -3,7 +3,8 @@ from django.utils.translation import gettext_lazy as _
 from phonenumber_field.modelfields import PhoneNumberField
 from parler.models import TranslatableModel, TranslatedFields
 from ckeditor.fields import RichTextField
-from django.contrib.auth.models import User
+# from django.contrib.auth.models import User
+from apps.accounts.models import User
 
 
 class Category(TranslatableModel):

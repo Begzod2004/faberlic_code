@@ -1,6 +1,6 @@
 from rest_framework import serializers
 from apps.order.models import Order,OrderItem
-from apps.account.serializers import VerificationEmailSerializer
+from apps.accounts.serializers import AccountSerializer
 from apps.product.serializers import ProductRetrieveSerializer
 from apps.product.models import Product
 from django.db import transaction
@@ -22,7 +22,7 @@ class OrderItemWatchSerializer(serializers.ModelSerializer):
 
 
 class OrderWatchSerializer(serializers.ModelSerializer):
-    user = VerificationEmailSerializer()
+    user = AccountSerializer()
     orderitem = OrderItemWatchSerializer(many=True)
     
     class Meta:

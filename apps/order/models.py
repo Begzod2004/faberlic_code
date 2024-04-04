@@ -1,6 +1,7 @@
 from django.db import models
+from django.conf import settings
 from apps.product.models import Product
-from apps.account.models import User
+# from apps.accounts.models import User
 
 CONTACT_STATUS = (
     (0,"New"),
@@ -11,7 +12,7 @@ CONTACT_STATUS = (
 
 class Order(models.Model):
     code = models.CharField(max_length=30,blank=True, unique=True)    
-    user = models.ForeignKey(User,on_delete=models.CASCADE)
+    user = models.ForeignKey(settings.AUTH_USER_MODEL, on_delete=models.CASCADE)
     status = models.IntegerField(choices=CONTACT_STATUS, default=0)
     created = models.DateTimeField(auto_now_add=True)
 

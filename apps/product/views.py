@@ -1,17 +1,18 @@
-from rest_framework import viewsets, filters
-from .serializers import  ProductSerializer, RecCategorySerializer, GetProductSerializer, ProductRatingSerializer
-from .models import Product, RecCategory, ProductRating
-from .filters import ProductFilter
-from rest_framework.filters import SearchFilter
-from .models import Category
-from rest_framework import viewsets
+from rest_framework import viewsets, filters, generics
+from rest_framework.permissions import IsAuthenticated  
 from django.db.models import F
-from .serializers import CategorySerializer
-from .filters import ProductFilter  # Filterni import qiling
-from django.http import JsonResponse
 from django_filters.rest_framework import DjangoFilterBackend
 from rest_framework.parsers import FormParser, MultiPartParser
 
+from .models import Category, RecCategory, Product, ProductRating, Order
+from .serializers import (
+    CategorySerializer,
+    RecCategorySerializer,
+    GetProductSerializer,
+    ProductRatingSerializer,
+    OrderSerializer,
+) 
+from .filters import ProductFilter
 
 
 class CategoryViewSet(viewsets.ModelViewSet):
@@ -25,27 +26,25 @@ class RecCategoryViewSet(viewsets.ModelViewSet):
 
 class GetFilterProductViewSet(viewsets.ModelViewSet):
     queryset = Product.objects.all()
-    parser_classes = (FormParser, MultiPartParser)   
+    parser_classes = (FormParser, MultiPartParser) 
     serializer_class = GetProductSerializer
-    filter_backends = [filters.SearchFilter]
-    search_fields = ['translations__name']      #'translations__description'
+    filter_backends = [DjangoFilterBackend, filters.SearchFilter]  # Add DjangoFilterBackend
+    search_fields = ['translations__name', 'translations__description']  # Expand  
     ordering_fields = ['created_at', 'name', 'type_product']
-
-    # def get_queryset(self):
-    #     # Get the search query from the request
-    #     search_query = self.request.GET.get('search', '')
-
-    #     # Perform the search and select related company data
-    #     queryset = Product.objects.filter(translations__name__icontains=search_query).select_related('company')
-
-    #     return queryset
 
 class ProductRatingViewSet(viewsets.ModelViewSet):
     queryset = ProductRating.objects.all().order_by(F('star').desc())
     serializer_class = ProductRatingSerializer
 
+from rest_framework import viewsets, permissions
+from .models import Order
+from .serializers import OrderSerializer
 
+class OrderViewSet(viewsets.ModelViewSet):  # Use ModelViewSet for full CRUD
+    queryset = Order.objects.all()
+    serializer_class = OrderSerializer
+    permission_classes = [permissions.IsAuthenticated]
 
-
-
-
+    def get_queryset(self):
+        """Filters orders to show only those belonging to the current user."""
+        return self.queryset.filter(user=self.request.user) 

@@ -88,9 +88,9 @@ class OrderItemInline(admin.TabularInline):
         return False
 
 class OrderAdmin(admin.ModelAdmin):
-    list_display = ['__str__', 'user', 'phone_number', 'created_at', 'is_processed']
+    list_display = ['user', 'phone_number', 'created_at', 'is_processed']
     list_filter = ['is_processed', 'created_at']
-    search_fields = ['user__username', 'phone_number']
+    search_fields = ['phone_number']
     inlines = [OrderItemInline]
 
     def has_add_permission(self, request):

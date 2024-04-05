@@ -1,11 +1,12 @@
-from rest_framework import serializers
+from rest_framework import serializers 
+from django.contrib.auth import get_user_model 
+from phonenumber_field.serializerfields import PhoneNumberField
 from parler_rest.serializers import TranslatableModelSerializer
 from parler_rest.fields import TranslatedFieldsField
-from .models import  Product, Category, RecCategory, ProductImage, ProductRating
-from rest_framework import serializers
+from .models import  Product, Category, RecCategory, ProductImage, ProductRating, Order, OrderItem
 from django.db.models import Avg
 
-
+User = get_user_model()
 class RecCategorySerializer(TranslatableModelSerializer):
     translations = TranslatedFieldsField(shared_model=RecCategory)
     
@@ -102,3 +103,23 @@ class GetProductSerializer(TranslatableModelSerializer):
     class Meta:
         model = Product
         fields = "__all__"
+
+
+
+class OrderItemSerializer(serializers.ModelSerializer):
+    class Meta:
+        model = OrderItem
+        fields = ['id', 'product', 'quantity'] 
+
+class OrderSerializer(serializers.ModelSerializer):
+    items = OrderItemSerializer(many=True) 
+    class Meta:
+        model = Order
+        fields = ['id', 'user', 'phone_number', 'created_at', 'updated_at', 'is_processed', 'items']
+
+    def create(self, validated_data):
+        items_data = validated_data.pop('items')
+        order = Order.objects.create(**validated_data) 
+        for item_data in items_data:
+            OrderItem.objects.create(order=order, **item_data)
+        return order

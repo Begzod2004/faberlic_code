@@ -96,10 +96,10 @@ class Order(models.Model):
     phone_number = PhoneNumberField(verbose_name=_('Telefon Raqami'))
     created_at = models.DateTimeField(auto_now_add=True, verbose_name=_('Yaratilgan Vaqti'))
     updated_at = models.DateTimeField(auto_now=True, verbose_name=_('Yangilangan Vaqti'))
-    is_processed = models.BooleanField(default=False, verbose_name=_('Qayta ishlandimi?'))
+    is_processed = models.BooleanField(default=True, verbose_name=_('Qayta ishlandimi?'))
 
     def __str__(self):
-        return f"{self.user.username} - {self.created_at.strftime('%Y-%m-%d')}"
+        return f"{self.user.first_name} - {self.created_at.strftime('%Y-%m-%d')}"
 
     class Meta:
         verbose_name = _('Buyurtma')

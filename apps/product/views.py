@@ -36,14 +36,13 @@ class ProductRatingViewSet(viewsets.ModelViewSet):
     queryset = ProductRating.objects.all().order_by(F('star').desc())
     serializer_class = ProductRatingSerializer
 
-from rest_framework import viewsets, permissions
+from rest_framework import viewsets
 from .models import Order
 from .serializers import OrderSerializer
 
 class OrderViewSet(viewsets.ModelViewSet):  # Use ModelViewSet for full CRUD
     queryset = Order.objects.all()
     serializer_class = OrderSerializer
-    permission_classes = [permissions.IsAuthenticated]
 
     def get_queryset(self):
         """Filters orders to show only those belonging to the current user."""

@@ -49,6 +49,7 @@ class UserRegisterSerializer(serializers.ModelSerializer):
         return user
 
 class LoginSerializer(serializers.ModelSerializer):
+    id = serializers.IntegerField(read_only=True)  # Add the id field
     email = serializers.EmailField(max_length=155, min_length=6)
     password=serializers.CharField(max_length=68, write_only=True)
     full_name=serializers.CharField(max_length=255, read_only=True)
@@ -57,7 +58,7 @@ class LoginSerializer(serializers.ModelSerializer):
 
     class Meta:
         model = User
-        fields = ['email', 'password', 'full_name', 'access_token', 'refresh_token']
+        fields = ['email', 'password', 'full_name', 'access_token', 'refresh_token','id']
 
     def validate(self, attrs):
         email = attrs.get('email')
@@ -73,7 +74,8 @@ class LoginSerializer(serializers.ModelSerializer):
             'email':user.email,
             'full_name':user.get_full_name,
             "access_token":str(tokens.get('access')),
-            "refresh_token":str(tokens.get('refresh'))
+            "refresh_token":str(tokens.get('refresh')),
+            'id': user.id  # Include the ID
         }
 
 

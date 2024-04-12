@@ -54,7 +54,7 @@ TINYMCE_DEFAULT_CONFIG = {
     'width': 800,
 }
 LOCAL_BASE_URL = 'http://127.0.0.1:8000'
-PROD_BASE_URL = "makssss.pythonanywhere.com"
+PROD_BASE_URL = "https://faberliic.uz/"
 # PROD_BASE_URL = 'https://w4.citynet.uz:4441'
 
 MIDDLEWARE = [
@@ -73,6 +73,7 @@ MIDDLEWARE = [
 CORS_ALLOWED_ORIGINS = [
     'http://localhost:3000',  # Replace with the actual origin of your frontend application
     'http://127.0.0.1:8080',
+    'http://faberliic.uz'
 ]
 
 CORS_ALLOW_METHODS = [
@@ -169,7 +170,7 @@ MEDIA_ROOT = BASE_DIR / 'media'
 # https://docs.djangoproject.com/en/4.1/ref/settings/#default-auto-field
 
 CORS_ORIGIN_ALLOW_ALL = True
-CSRF_TRUSTED_ORIGINS = ["https://makssss.pythonanywhere.com/", "http://makssss.pythonanywhere.com",]
+CSRF_TRUSTED_ORIGINS = ["http://faberliic.uz/", "https://faberliic.uz/",]
 DEFAULT_AUTO_FIELD = 'django.db.models.BigAutoField'
 
 STATIC_ROOT = os.path.join(BASE_DIR, 'staticfiles')
@@ -219,39 +220,6 @@ SIMPLE_JWT = {
 
 DOMAIN='localhost:3000'
 SITE_NAME = 'Henry Ultimate Authentication Course'
-
-
-# SIMPLE_JWT = {
-#     'ACCESS_TOKEN_LIFETIME': timedelta(days=7),
-#     'REFRESH_TOKEN_LIFETIME': timedelta(days=10),
-#     'ROTATE_REFRESH_TOKENS': False,
-#     'BLACKLIST_AFTER_ROTATION': False,
-#     'UPDATE_LAST_LOGIN': False,
-
-#     'ALGORITHM': 'HS256',
-#     'SIGNING_KEY': SECRET_KEY,
-#     'VERIFYING_KEY': None,
-#     'AUDIENCE': None,
-#     'ISSUER': None,
-#     'JWK_URL': None,
-#     'LEEWAY': 0,
-
-#     'AUTH_HEADER_TYPES': ('Bearer',),
-#     'AUTH_HEADER_NAME': 'HTTP_AUTHORIZATION',
-#     'USER_ID_FIELD': 'id',
-#     'USER_ID_CLAIM': 'user_id',
-#     'USER_AUTHENTICATION_RULE': 'rest_framework_simplejwt.authentication.default_user_authentication_rule',
-
-#     'AUTH_TOKEN_CLASSES': ('rest_framework_simplejwt.tokens.AccessToken',),
-#     'TOKEN_TYPE_CLAIM': 'token_type',
-#     'TOKEN_USER_CLASS': 'rest_framework_simplejwt.models.TokenUser',
-
-#     'JTI_CLAIM': 'jti',
-
-#     'SLIDING_TOKEN_REFRESH_EXP_CLAIM': 'refresh_exp',
-#     'SLIDING_TOKEN_LIFETIME': timedelta(days=5),
-#     'SLIDING_TOKEN_REFRESH_LIFETIME': timedelta(days=7),
-# }
 
 
 

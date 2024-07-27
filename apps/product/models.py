@@ -1,119 +1,211 @@
-from django.db import models
-from django.utils.translation import gettext_lazy as _
-from phonenumber_field.modelfields import PhoneNumberField
-from parler.models import TranslatableModel, TranslatedFields
-from ckeditor.fields import RichTextField
-# from django.contrib.auth.models import User
-from apps.accounts.models import User
+from django.core.exceptions import ValidationError
+from django.db.models import (CASCADE, SET_NULL, BigIntegerField, BooleanField,
+                              CharField, DateTimeField, ForeignKey, ImageField,
+                              IntegerField, ManyToManyField, Max, Min, Model,
+                              SlugField, TextField)
+from rest_framework.exceptions import ValidationError
+from slugify import slugify
+
+from apps.utils import generate_unique_filename
 
 
-class Category(TranslatableModel):
-    translations = TranslatedFields(
-        name=models.CharField(max_length=255, verbose_name=_('Name')),
-        description=RichTextField(default=None),
+def calculate_price_range(queryset, field_name="price"):
+    prices = queryset.values_list(field_name, flat=True)
+    min_price = min(prices) if prices else None
+    max_price = max(prices) if prices else None
 
+    return {
+        "min_price": 0 if min_price == max_price else min_price,
+        "max_price": max_price,
+    }
+
+
+class Category(Model):
+    title = CharField(max_length=255, unique=True)
+    is_index = BooleanField(default=False)
+    image = ImageField(upload_to=generate_unique_filename, null=True, blank=True)
+
+    @property
+    def price_range(self):
+        return calculate_price_range(self.sub_categories.all(), "price")
+
+    @property
+    def sub_category_count(self):
+        return self.sub_categories.count()
+
+    @staticmethod
+    def get_all_categories_instance():
+        return Category(title="All categories", id=0)
+
+
+class SubCategory(Model):
+    title = CharField(max_length=255, unique=True)
+    category = ForeignKey(Category, on_delete=CASCADE, related_name="sub_categories")
+
+
+class Brand(Model):
+    title = CharField(max_length=255, unique=True)
+    sub_category = ManyToManyField(SubCategory, related_name="brands")
+
+    @property
+    def price_range(self):
+        return calculate_price_range(self.products.all(), "price")
+
+
+class Images(Model):
+    image = ImageField(upload_to=generate_unique_filename, null=True, blank=True)
+
+
+class Stock(Model):
+    title = CharField(max_length=50, null=True, blank=True)
+
+
+class IndexCategory(Model):
+    title = CharField(max_length=255, null=True, blank=True, unique=True)
+    image = ImageField(max_length=255, upload_to=generate_unique_filename, null=True)
+    category = ForeignKey(
+        Category,
+        on_delete=CASCADE,
+        related_name="index_categories",
+        null=True,
+        blank=True,
     )
-    image = models.ImageField(upload_to='category_images', verbose_name=_('Rasm'))
-    is_active = models.BooleanField(default=True)
-
-    def __str__(self):
-        return self.name
-    
-    def reccategories(self):
-        return RecCategory.objects.filter(category=self)
-    
-    class Meta:
-        verbose_name = _('Category')
-        verbose_name_plural = _('Categories')
-
-
-class RecCategory(TranslatableModel):
-    translations = TranslatedFields(
-        name=models.CharField(max_length=255, verbose_name=_('Name')),
+    sub_category = ForeignKey(
+        SubCategory,
+        on_delete=CASCADE,
+        related_name="index_sub_categories",
+        null=True,
+        blank=True,
     )
-    image = models.ImageField(upload_to='recctegory_images', verbose_name=_('Rasm'), blank=True, null=True)
-    is_active = models.BooleanField(default=True)
-
-    def __str__(self):
-        return self.name    
-
-    class Meta:
-        verbose_name = _('Reccategory')
-        verbose_name_plural = _('Reccategories')
-
-# Mahsulot modeli
-class Product(TranslatableModel):
-    translations = TranslatedFields(
-        name=models.CharField(max_length=300, verbose_name=_('Nomi')),
-        description=RichTextField(),
-        tag=models.TextField(verbose_name=_('Tag'), default='Women'),
-        short_description=models.CharField(max_length=300, null=True, blank=True, default="NEW"),
+    brand = ForeignKey(
+        Brand, on_delete=CASCADE, related_name="index_brands", null=True, blank=True
     )
-    rec_category = models.ForeignKey(RecCategory, on_delete=models.CASCADE, verbose_name=_('Rekamindatsiya Kategoriyasi'))
-    category = models.ForeignKey(Category, on_delete=models.CASCADE, verbose_name=_('Product Kategory'))
-    created_at = models.DateTimeField(auto_now_add=True, verbose_name=_('Created at'))
-    price = models.DecimalField(max_digits=10, decimal_places=2, verbose_name=_('Narxi'))  # Narx maydoni qo'shildi
-    updated_at = models.DateTimeField(auto_now=True, verbose_name=_('Updated at'))
-    is_featured = models.BooleanField(default=False)
-
-    def __str__(self):
-        return self.name
-    
-    class Meta:
-        verbose_name = _('MAXSULOT')
-        verbose_name_plural = _('Mahsulotlar')
-        ordering = ['-created_at']
-
-# Mahsulot rasmlari uchun model
-class ProductImage(models.Model):
-    product = models.ForeignKey(Product, on_delete=models.CASCADE, related_name='images')
-    image = models.ImageField(upload_to='product_images')
-
-    def __str__(self):
-        return f"Image for {self.product.name}"
-    
-
-class ProductRating(models.Model):
-    name = models.CharField(max_length=123, help_text="Nomi")
-    star = models.IntegerField(default=0 , verbose_name = "star")
-    product = models.ForeignKey(Product, on_delete=models.CASCADE,related_name='productreview')
-    review_comment = models.TextField()
-    review_date = models.DateTimeField(auto_now_add=True, verbose_name='review_created_date')
-    email = models.EmailField()
-
-    class Meta:
-        verbose_name = _('Product Rating')
-        verbose_name_plural = _('Product Ratings')
-
-    def __str__(self):
-        return f"{self.product.name} - {self.star} stars"
+    stock = ForeignKey(
+        Stock, on_delete=CASCADE, related_name="index_stock", null=True, blank=True
+    )
 
 
+class Product(Model):
+    title = CharField(max_length=255)
+    price = IntegerField()
+    sales = IntegerField(null=True, blank=True)
+    images = ManyToManyField(Images, related_name="product_images")
+    description = TextField()
+    is_available = BooleanField(default=True)
 
-# Yangi qo'shilgan Buyurtma va Buyurtma bandlari uchun modellar
-class Order(models.Model):
-    user = models.ForeignKey(User, on_delete=models.CASCADE, verbose_name=_('Foydalanuvchi'))
-    phone_number = PhoneNumberField(verbose_name=_('Telefon Raqami'))
-    created_at = models.DateTimeField(auto_now_add=True, verbose_name=_('Yaratilgan Vaqti'))
-    updated_at = models.DateTimeField(auto_now=True, verbose_name=_('Yangilangan Vaqti'))
-    is_processed = models.BooleanField(default=True, verbose_name=_('Qayta ishlandimi?'))
+    stock = ForeignKey(
+        Stock, on_delete=CASCADE, related_name="product_stock", null=True, blank=True
+    )
+    sub_category = ForeignKey(SubCategory, on_delete=CASCADE, related_name="products")
+    category = ForeignKey(Category, on_delete=CASCADE, related_name="products")
+    index_category = ForeignKey(
+        IndexCategory,
+        CASCADE,
+        related_name="index_category_products",
+        null=True,
+        blank=True,
+    )
+    brand = ForeignKey(Brand, on_delete=CASCADE, related_name="products")
+    slug = SlugField(max_length=255, unique=True)
 
-    def __str__(self):
-        return f"{self.user.first_name} - {self.created_at.strftime('%Y-%m-%d')}"
+    created_at = DateTimeField(auto_now_add=True)
+    updated_at = DateTimeField(auto_now=True)
 
-    class Meta:
-        verbose_name = _('Buyurtma')
-        verbose_name_plural = _('Buyurtmalar')
+    def save(self, *args, **kwargs):
+        if not self.pk:
+            self.slug = slugify(self.title)
+
+        while Product.objects.filter(slug=self.slug).exclude(pk=self.pk).exists():
+            if "-" in self.slug:
+                parts = self.slug.split("-")
+                if parts[-1].isdigit():
+                    count = int(parts[-1])
+                    self.slug = "-".join(parts[:-1]) + "-" + str(count + 1)
+                else:
+                    self.slug += "-1"
+            else:
+                self.slug += "-1"
+
+        super().save(*args, **kwargs)
+
+        # Validate the number of images after saving
+        if self.images.count() > 3:
+            raise ValidationError("Cannot have more than 3 images for a product.")
+
+        # Save the related index_category object if it exists
+        if self.index_category:
+            self.index_category.save()
+
+    @property
+    def min_price(self):
+        return Product.objects.aggregate(Min("price"))["price__min"] or 0
+
+    @property
+    def max_price(self):
+        return Product.objects.aggregate(Max("price"))["price__max"] or 0
 
 
-class OrderItem(models.Model):
-    order = models.ForeignKey(Order, on_delete=models.CASCADE, related_name='items', verbose_name=_('Buyurtma'))
-    product = models.ForeignKey(Product, on_delete=models.CASCADE, verbose_name=_('Mahsulot'))
-    quantity = models.PositiveIntegerField(default=1, verbose_name=_('Miqdori'))
+class Banner(Model):
+    web_image = ImageField(
+        max_length=255, upload_to=generate_unique_filename, null=True
+    )
+    rsp_image = ImageField(
+        max_length=255, upload_to=generate_unique_filename, null=True
+    )
+    is_advertisement = BooleanField(default=False)
+    category = ForeignKey(
+        Category,
+        on_delete=CASCADE,
+        related_name="banner_categories",
+        null=True,
+        blank=True,
+    )
+    sub_category = ForeignKey(
+        SubCategory,
+        on_delete=CASCADE,
+        related_name="banner_sub_categories",
+        null=True,
+        blank=True,
+    )
+    brand = ForeignKey(
+        Brand, on_delete=CASCADE, related_name="banner_brands", null=True, blank=True
+    )
+    stock = ForeignKey(
+        Stock, on_delete=CASCADE, related_name="banner_stock", null=True, blank=True
+    )
+    product = ForeignKey(
+        Product,
+        on_delete=CASCADE,
+        related_name="banner_products",
+        null=True,
+        blank=True,
+    )
 
-    def __str__(self):
-        return f"{self.product.name} - {self.quantity}"
 
-    class Meta:
-        verbose_name = _('Buyurtma Bandidagi Mahsulot')
-        verbose_name_plural = _('Buyurtma Bandidagi Mahsulotlar')
+class ShortDescription(Model):
+    key = CharField(max_length=255)
+    value = CharField(max_length=255)
+    product = ForeignKey(Product, on_delete=CASCADE, related_name="short_descriptions")
+
+
+class Characteristics(Model):
+    key = CharField(max_length=255)
+    value = CharField(max_length=255)
+    product = ForeignKey(Product, on_delete=CASCADE, related_name="characteristics")
+
+
+class OrderUser(Model):
+    name = CharField(max_length=255, blank=True, null=True)
+    phone = CharField(max_length=255)
+    address = CharField(max_length=255, blank=True, null=True)
+    total_price = BigIntegerField()
+    product_title = CharField(max_length=255, blank=True, null=True)
+    created_at = DateTimeField(auto_now_add=True)
+
+
+class Order(Model):
+    product_id = ForeignKey(Product, on_delete=SET_NULL, null=True, blank=True)
+    product_title = CharField(max_length=255, blank=True, null=True)
+    count = IntegerField(null=True, blank=True)
+    order = ForeignKey(OrderUser, CASCADE, related_name="user_order")
+    created_at = DateTimeField(auto_now_add=True)

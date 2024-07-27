@@ -8,7 +8,7 @@ if defined _OLD_CODEPAGE (
     "%SystemRoot%\System32\chcp.com" 65001 > nul
 )
 
-set VIRTUAL_ENV=C:\Users\Bekzod\OneDrive\Desktop\faberlic\django-groupss\env
+set VIRTUAL_ENV=C:\Users\user\Documents\django\faberlic\faberlic_code\env
 
 if not defined PROMPT set PROMPT=$P$G
 

@@ -8,8 +8,8 @@ load_dotenv()
 
 
 # SECURITY WARNING: keep the secret key used in production secret!
-# SECRET_KEY = 'django-insecure-%tl2ga#4yz3-up58v_c%w$h&oq#8=)100))=uwd3m=54_&8e_0'
-SECRET_KEY = os.getenv('SECRET_KEY')
+SECRET_KEY = 'django-insecure-%tl2ga#4yz3-up58v_c%w$h&oq#8=)100))=uwd3m=54_&8e_0'
+# SECRET_KEY = os.getenv('SECRET_KEY')
 DEBUG = True
 # SECURITY WARNING: don't run with debug turned on in production!
 DEBUG = True

@@ -188,11 +188,6 @@ class ShortDescription(Model):
     product = ForeignKey(Product, on_delete=CASCADE, related_name="short_descriptions")
 
 
-class Characteristics(Model):
-    key = CharField(max_length=255)
-    value = CharField(max_length=255)
-    product = ForeignKey(Product, on_delete=CASCADE, related_name="characteristics")
-
 
 class OrderUser(Model):
     name = CharField(max_length=255, blank=True, null=True)

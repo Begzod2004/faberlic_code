@@ -8,7 +8,7 @@ from rest_framework.fields import ImageField, ListField, SerializerMethodField
 from rest_framework.relations import PrimaryKeyRelatedField
 from rest_framework.serializers import ModelSerializer
 
-from apps.product.models import (Banner, Brand, Category, Characteristics,
+from apps.product.models import (Banner, Brand, Category,
                                  Images, IndexCategory, Order, OrderUser,
                                  Product, ShortDescription, Stock, SubCategory)
 from apps.utils import SymbolValidationMixin
@@ -416,16 +416,6 @@ class ShortDescriptionSerializer(ModelSerializer):
         return fields
 
 
-class CharacteristicsSerializer(ModelSerializer):
-    class Meta:
-        model = Characteristics
-        fields = (
-            "id",
-            "key_uz",
-            "key_ru",
-            "value_uz",
-            "value_ru",
-        )
 
     # def get_fields(self):
     #     fields = super().get_fields()
@@ -621,7 +611,6 @@ class ProductSerializer(SymbolValidationMixin, ModelSerializer):
         required=False,
     )
     short_descriptions = ShortDescriptionSerializer(many=True, required=False)
-    characteristics = CharacteristicsSerializer(many=True, required=False)
 
     class Meta:
         model = Product
@@ -646,7 +635,6 @@ class ProductSerializer(SymbolValidationMixin, ModelSerializer):
             "brands",
             "sub_categories",
             "short_descriptions",
-            "characteristics",
             "created_at",
             "slug",
         )
@@ -654,7 +642,6 @@ class ProductSerializer(SymbolValidationMixin, ModelSerializer):
     def create(self, validated_data):
         image_ids = validated_data.pop("image_ids", [])
         short_descriptions_data = validated_data.pop("short_descriptions", [])
-        characteristics_data = validated_data.pop("characteristics", [])
 
         product = Product.objects.create(**validated_data)
 
@@ -662,9 +649,6 @@ class ProductSerializer(SymbolValidationMixin, ModelSerializer):
 
         for short_description_data in short_descriptions_data:
             ShortDescription.objects.create(product=product, **short_description_data)
-
-        for characteristic_data in characteristics_data:
-            Characteristics.objects.create(product=product, **characteristic_data)
 
         return product
 
@@ -690,11 +674,6 @@ class ProductSerializer(SymbolValidationMixin, ModelSerializer):
         for short_description_data in short_descriptions_data:
             ShortDescription.objects.create(product=instance, **short_description_data)
 
-        # Update or create characteristics
-        characteristics_data = validated_data.pop("characteristics", [])
-        instance.characteristics.all().delete()
-        for characteristic_data in characteristics_data:
-            Characteristics.objects.create(product=instance, **characteristic_data)
 
         # Update index_category
         index_category_data = validated_data.get("index_category")
@@ -754,10 +733,6 @@ class ProductSerializer(SymbolValidationMixin, ModelSerializer):
             ).data
             representation["short_descriptions"] = short_descriptions_data
 
-            characteristics_data = CharacteristicsSerializer(
-                instance.characteristics.all(), many=True
-            ).data
-            representation["characteristics"] = characteristics_data
             representation["related_products"] = related_products_data
             representation["stock"] = self.get_stock(instance)
             request_method = self.context["request"].method

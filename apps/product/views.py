@@ -22,13 +22,12 @@ from rest_framework.status import (HTTP_200_OK, HTTP_201_CREATED,
 from rest_framework.views import APIView
 from rest_framework.viewsets import GenericViewSet
 
-from apps.product.models import (Banner, Brand, Category, Characteristics,
+from apps.product.models import (Banner, Brand, Category, 
                                  IndexCategory, Order, OrderUser,
                                  ShortDescription, Stock, SubCategory)
 from apps.product.serializers import (AllCategorySerializer, BannerSerializer,
                                       BrandSerializer, CategoryCountSerializer,
                                       CategorySerializer,
-                                      CharacteristicsSerializer,
                                       ImageModelSerializer,
                                       IndexCategorySerializer,
                                       MainPageCategorySerializer,
@@ -503,41 +502,6 @@ class ShortDescriptionDetailUpdateDestroyView(RetrieveUpdateDestroyAPIView):
         return super().patch(request, *args, **kwargs)
 
     @extend_schema(tags=["short-description"])
-    def delete(self, request, *args, **kwargs):
-        return super().delete(request, *args, **kwargs)
-
-
-class CharacteristicsListCreateView(ListCreateAPIView):
-    queryset = Characteristics.objects.all().order_by("-id")
-    serializer_class = CharacteristicsSerializer
-
-    @extend_schema(tags=["characteristics"])
-    def get(self, request, *args, **kwargs):
-        return super().get(request, *args, **kwargs)
-
-    @extend_schema(tags=["characteristics"])
-    def post(self, request, *args, **kwargs):
-        return super().post(request, *args, **kwargs)
-
-
-class CharacteristicsDetailUpdateDestroyView(RetrieveUpdateDestroyAPIView):
-    queryset = Characteristics.objects.all()
-    serializer_class = CharacteristicsSerializer
-    lookup_field = "id"
-
-    @extend_schema(tags=["characteristics"])
-    def get(self, request, *args, **kwargs):
-        return super().get(request, *args, **kwargs)
-
-    @extend_schema(tags=["characteristics"])
-    def put(self, request, *args, **kwargs):
-        return super().put(request, *args, **kwargs)
-
-    @extend_schema(tags=["characteristics"])
-    def patch(self, request, *args, **kwargs):
-        return super().patch(request, *args, **kwargs)
-
-    @extend_schema(tags=["characteristics"])
     def delete(self, request, *args, **kwargs):
         return super().delete(request, *args, **kwargs)
 

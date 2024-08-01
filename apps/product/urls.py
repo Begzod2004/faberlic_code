@@ -74,16 +74,7 @@ urlpatterns = [
         views.ShortDescriptionDetailUpdateDestroyView.as_view(),
         name="short-description-retrieve-update-destroy",
     ),
-    path(
-        "characteristics/",
-        views.CharacteristicsListCreateView.as_view(),
-        name="characteristics-list-create",
-    ),
-    path(
-        "characteristics/<int:id>/",
-        views.CharacteristicsDetailUpdateDestroyView.as_view(),
-        name="characteristics-retrieve-update-destroy",
-    ),
+
     path("product-search", SearchListApiView.as_view(), name="catalog-search"),
     path(
         "banners/",

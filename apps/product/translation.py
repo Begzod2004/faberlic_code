@@ -1,6 +1,6 @@
 from modeltranslation.translator import TranslationOptions, register
 
-from apps.product.models import (Banner, Brand, Category, Characteristics,
+from apps.product.models import (Banner, Brand, Category,
                                  IndexCategory, Product, ShortDescription,
                                  Stock, SubCategory)
 
@@ -32,10 +32,6 @@ class ProductTranslation(TranslationOptions):
 class ShortDescriptionTranslation(TranslationOptions):
     fields = ("key", "value")
 
-
-@register(Characteristics)
-class CharacteristicsTranslation(TranslationOptions):
-    fields = ("key", "value")
 
 
 @register(IndexCategory)

@@ -17,6 +17,31 @@ DEBUG = True
 ALLOWED_HOSTS = ['*']
 # Application definition
 
+# INSTALLED_APPS = [
+#     'jazzmin',
+#     "django.contrib.admin",
+#     "django.contrib.auth",
+#     "django.contrib.contenttypes",
+#     "django.contrib.sessions",
+#     "django.contrib.messages",
+#     "django.contrib.staticfiles",
+#     # build apps
+#     'rest_framework.authtoken',
+#     'parler',
+#     # my apps
+#     "apps.product",
+#     "apps.about",
+#     "apps.users",
+
+#     "rest_framework",
+#     "drf_spectacular",
+#     "corsheaders",
+#     "djoser",
+#     "modeltranslation",
+# ]   
+
+
+
 INSTALLED_APPS = [
     'jazzmin',
     "django.contrib.admin",
@@ -25,6 +50,7 @@ INSTALLED_APPS = [
     "django.contrib.sessions",
     "django.contrib.messages",
     "django.contrib.staticfiles",
+    'modeltranslation',  # modeltranslation shu yerda
     # build apps
     'rest_framework.authtoken',
     'parler',
@@ -32,13 +58,12 @@ INSTALLED_APPS = [
     "apps.product",
     "apps.about",
     "apps.users",
-
     "rest_framework",
     "drf_spectacular",
     "corsheaders",
     "djoser",
-    "modeltranslation",
-]   
+]
+
 
 AUTH_USER_MODEL = 'users.User'
 

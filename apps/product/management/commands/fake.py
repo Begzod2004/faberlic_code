@@ -12,8 +12,7 @@ class Command(BaseCommand):
     def handle(self, *args, **kwargs):
         self.stdout.write("Seeding data...")
 
-        # Clear existing data
-        Category.objects.all().delete()
+        # Clear existing data (except Category)
         SubCategory.objects.all().delete()
         Brand.objects.all().delete()
         Product.objects.all().delete()
@@ -22,27 +21,22 @@ class Command(BaseCommand):
         Order.objects.all().delete()
         ShortDescription.objects.all().delete()
 
-        # Seed categories
-        categories = []
-        for _ in range(5):
-            category = Category.objects.create(
-                title=fake_en.word(),
-                title_ru=fake_ru.word(),
-                title_uz=fake_ru.word(),  # Fake Uzbek data using Russian locale
-                is_index=fake_en.boolean()
-            )
-            categories.append(category)
+        # Get existing categories
+        categories = list(Category.objects.all())
+        if not categories:
+            self.stdout.write(self.style.ERROR("No categories found in the database. Please add categories first."))
+            return
 
         # Seed subcategories
-        subcategories = []
-        for _ in range(10):
-            subcategory = SubCategory.objects.create(
-                title=fake_en.word(),
-                title_ru=fake_ru.word(),
-                title_uz=fake_ru.word(),  # Fake Uzbek data using Russian locale
-                category=random.choice(categories)
-            )
-            subcategories.append(subcategory)
+        # subcategories = []
+        # for _ in range(10):
+        #     subcategory = SubCategory.objects.create(
+        #         title=fake_en.word(),
+        #         title_ru=fake_ru.word(),
+        #         title_uz=fake_ru.word(),  # Fake Uzbek data using Russian locale
+        #         category=random.choice(categories)
+        #     )
+        #     subcategories.append(subcategory)
 
         # Seed brands
         brands = []
@@ -79,17 +73,18 @@ class Command(BaseCommand):
                 is_available=fake_en.boolean(),
                 stock=random.choice(stocks),
                 sub_category=random.choice(subcategories),
-                category=random.choice(categories),
+                category=random.choice(categories),  # Use existing categories
                 brand=random.choice(brands),
             )
 
             # Create a ShortDescription for each product
-            short_description = ShortDescription.objects.create(
+            ShortDescription.objects.create(
                 product=product,
                 key='example_key',
                 value='This is an example short description'
             )
 
+            # Add existing images to the product if any
             existing_images = list(Images.objects.all())
             if existing_images:
                 product_image = random.choice(existing_images)
@@ -111,8 +106,8 @@ class Command(BaseCommand):
 
         # Seed orders
         for _ in range(20):
-            order = Order.objects.create(
-                product_id=random.choice(Product.objects.all()),
+            Order.objects.create(
+                product=random.choice(Product.objects.all()),
                 product_title=fake_en.word(),
                 count=random.randint(1, 10),
                 order=random.choice(order_users)

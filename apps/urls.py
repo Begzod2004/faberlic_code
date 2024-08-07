@@ -5,3 +5,12 @@ urlpatterns = [
     path("about/", include("apps.about.urls")),
     path("users/", include("apps.users.urls")),
 ]
+
+
+
+
+
+
+
+
+

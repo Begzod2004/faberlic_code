@@ -1,5 +1,5 @@
 # Django specific #
-*.log
+
 *.pot
 *.pyc
 __pycache__/

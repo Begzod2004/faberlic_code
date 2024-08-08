@@ -677,6 +677,85 @@ class BannerListView(ListAPIView):
 #         return Response(serializer.errors, status=status.HTTP_400_BAD_REQUEST)
 
 
+# class SubmitOrderView(CreateAPIView):
+#     serializer_class = OrderUserSerializer
+
+#     @transaction.atomic
+#     @extend_schema(tags=["orders"])
+#     def post(self, request, *args, **kwargs):
+#         serializer = self.get_serializer(data=request.data)
+#         if serializer.is_valid():
+#             order_items = serializer.validated_data.get("order", [])
+#             total_price = 0
+#             order_text = ""
+#             product_ids_in_order = set()
+
+#             # Declare order_user variable here
+#             order_user = None
+
+#             for item in order_items:
+#                 product_id = item.get("product_id", 0)
+#                 product_count = item.get("count", 0)
+
+#                 try:
+#                     product = item.get("product_id")
+#                     if isinstance(
+#                         product, Product
+#                     ):  # Check if it's already a Product object
+#                         product_id = product.id
+#                         product_title = product.title_uz
+#                     else:
+#                         product = Product.objects.get(id=product_id)
+#                         product_title = product.title_uz
+#                 except Product.DoesNotExist:
+#                     raise Http404(f"Product with ID {product_id} not found")
+
+#                 product_price = product.sales if product.sales else product.price
+
+#                 product_total_price = product_count * product_price
+#                 total_price += product_total_price
+
+#                 product_detail = f"🔹 Tovar: {product_title}\n🔸 Soni: {product_count}\n🔸 Narxi: {product_price}\n"
+#                 order_text += product_detail
+
+#                 if product_id not in product_ids_in_order:
+#                     product_ids_in_order.add(product_id)
+
+#                 # Save the order with product_title
+#                 if order_user is None:
+#                     order_user = serializer.save(
+#                         total_price=total_price, product_title=product_title
+#                     )
+
+#                 Order.objects.create(
+#                     product_id=product,
+#                     product_title=product_title,
+#                     count=product_count,
+#                     order=order_user,
+#                 )
+
+#             name = order_user.name
+#             phone = order_user.phone
+#             address = order_user.address
+
+#             text = f"\n\n\n\n\n📦 Yangi zakaz tushdi 📦\n\n"
+#             text += f"👤 Ism: {name}\n📞 Telefon Nomer: {phone}\n🏠 Manzil: {address}\n"
+#             text += "\n\n🛒 Zakaz qilingan tovarlar: \n\n"
+#             text += order_text
+#             text += f"\n💰 Umumiy narxi: {total_price}"
+
+#             token = "7395086423:AAHPd2zrNTuRx60ioTq08uhbw5TP3INmd8Q"
+#             user_ids = ["5274871404"]
+
+#             for user_id in user_ids:
+#                 url = f"https://api.telegram.org/bot{token}/sendMessage?chat_id={user_id}&text={text}"
+#                 print(requests.get(url))
+
+#             return Response(serializer.data, status=status.HTTP_201_CREATED)
+
+#         return Response(serializer.errors, status=status.HTTP_400_BAD_REQUEST)
+
+
 class SubmitOrderView(CreateAPIView):
     serializer_class = OrderUserSerializer
 
@@ -690,7 +769,7 @@ class SubmitOrderView(CreateAPIView):
             order_text = ""
             product_ids_in_order = set()
 
-            # Declare order_user variable here
+            # Initialize order_user
             order_user = None
 
             for item in order_items:
@@ -699,9 +778,7 @@ class SubmitOrderView(CreateAPIView):
 
                 try:
                     product = item.get("product_id")
-                    if isinstance(
-                        product, Product
-                    ):  # Check if it's already a Product object
+                    if isinstance(product, Product):  # Already a Product object
                         product_id = product.id
                         product_title = product.title_uz
                     else:
@@ -711,17 +788,18 @@ class SubmitOrderView(CreateAPIView):
                     raise Http404(f"Product with ID {product_id} not found")
 
                 product_price = product.sales if product.sales else product.price
-
                 product_total_price = product_count * product_price
                 total_price += product_total_price
 
-                product_detail = f"🔹 Tovar: {product_title}\n🔸 Soni: {product_count}\n🔸 Narxi: {product_price}\n"
+                product_detail = (
+                    f"🔹 Tovar: {product_title}\n🔸 Soni: {product_count}\n🔸 Narxi: {product_price}\n"
+                )
                 order_text += product_detail
 
                 if product_id not in product_ids_in_order:
                     product_ids_in_order.add(product_id)
 
-                # Save the order with product_title
+                # Save the order if it's the first product
                 if order_user is None:
                     order_user = serializer.save(
                         total_price=total_price, product_title=product_title
@@ -734,26 +812,30 @@ class SubmitOrderView(CreateAPIView):
                     order=order_user,
                 )
 
+            # Assuming OrderUser model has 'name', 'phone', and 'address' attributes
             name = order_user.name
             phone = order_user.phone
             address = order_user.address
 
-            text = f"\n\n\n\n\n📦 Yangi zakaz tushdi 📦\n\n"
-            text += f"👤 Ism: {name}\n📞 Telefon Nomer: {phone}\n🏠 Manzil: {address}\n"
-            text += "\n\n🛒 Zakaz qilingan tovarlar: \n\n"
-            text += order_text
-            text += f"\n💰 Umumiy narxi: {total_price}"
+            text = (
+                f"\n\n\n\n\n📦 Yangi zakaz tushdi 📦\n\n"
+                f"👤 Ism: {name}\n📞 Telefon Nomer: {phone}\n🏠 Manzil: {address}\n"
+                f"\n\n🛒 Zakaz qilingan tovarlar: \n\n{order_text}"
+                f"\n💰 Umumiy narxi: {total_price}"
+            )
 
             token = "7395086423:AAHPd2zrNTuRx60ioTq08uhbw5TP3INmd8Q"
-            user_ids = [5274871404, 1835816946]
+            user_ids = ["1835816946"]
 
             for user_id in user_ids:
                 url = f"https://api.telegram.org/bot{token}/sendMessage?chat_id={user_id}&text={text}"
-                print(requests.get(url))
+                requests.get(url)
 
             return Response(serializer.data, status=status.HTTP_201_CREATED)
 
         return Response(serializer.errors, status=status.HTTP_400_BAD_REQUEST)
+
+
 
 
 class OrderListView(ListAPIView):

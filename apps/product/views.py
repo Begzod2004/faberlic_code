@@ -824,8 +824,9 @@ class SubmitOrderView(CreateAPIView):
                 f"\n💰 Umumiy narxi: {total_price}"
             )
 
-            token = "7395086423:AAHPd2zrNTuRx60ioTq08uhbw5TP3INmd8Q"
-            user_ids = ["1835816946"]
+            # Load bot token and user IDs from environment variables
+            token = os.getenv("TELEGRAM_BOT_TOKEN")
+            user_ids = os.getenv("TELEGRAM_USER_IDS", "").split()
 
             for user_id in user_ids:
                 url = f"https://api.telegram.org/bot{token}/sendMessage?chat_id={user_id}&text={text}"

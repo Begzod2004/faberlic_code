@@ -8,7 +8,7 @@ from rest_framework.fields import ImageField, ListField, SerializerMethodField
 from rest_framework.relations import PrimaryKeyRelatedField
 from rest_framework.serializers import ModelSerializer
 
-from apps.product.models import (Banner, Brand, Category,
+from apps.product.models import (Banner, Category,
                                  Images, IndexCategory, Order, OrderUser,
                                  Product, ShortDescription, Stock, SubCategory)
 from apps.utils import SymbolValidationMixin
@@ -41,34 +41,11 @@ class ImageModelSerializer(ModelSerializer):
         return created_images
 
 
-class SubBrandSerializer(ModelSerializer):
-    min_price = SerializerMethodField()
-    max_price = SerializerMethodField()
-
-    @staticmethod
-    def get_min_price(obj) -> float:
-        return obj.products.aggregate(Min("price"))["price__min"] or 0.0
-
-    @staticmethod
-    def get_max_price(obj) -> float:
-        return obj.products.aggregate(Max("price"))["price__max"] or 0.0
-
-    class Meta:
-        model = Brand
-        fields = (
-            "id",
-            "title_uz",
-            "title_ru",
-            "min_price",
-            "max_price",
-        )
-
 
 class SubCategorySerializer(ModelSerializer):
     min_price = SerializerMethodField()
     max_price = SerializerMethodField()
     categories = SerializerMethodField()
-    brands = SerializerMethodField()
 
     def get_fields(self):
         fields = super().get_fields()
@@ -88,11 +65,6 @@ class SubCategorySerializer(ModelSerializer):
     @staticmethod
     def get_max_price(obj) -> float:
         return obj.products.aggregate(Max("price"))["price__max"] or 0.0
-
-    @staticmethod
-    def get_brands(obj: SubCategory) -> list:
-        brands = obj.brands.all()
-        return SubBrandSerializer(brands, many=True).data
 
     @staticmethod
     def get_categories(obj: SubCategory) -> Optional[Dict[str, str]]:
@@ -116,7 +88,6 @@ class SubCategorySerializer(ModelSerializer):
             "categories",
             "min_price",
             "max_price",
-            "brands",
         )
 
 
@@ -132,33 +103,11 @@ class CategoryCountSerializer(ModelSerializer):
         fields = ("count",)
 
 
-class BrandAllSerializer(ModelSerializer):
-    min_price = SerializerMethodField()
-    max_price = SerializerMethodField()
-
-    @staticmethod
-    def get_min_price(obj) -> float:
-        return obj.products.aggregate(Min("price"))["price__min"] or 0.0
-
-    @staticmethod
-    def get_max_price(obj) -> float:
-        return obj.products.aggregate(Max("price"))["price__max"] or 0.0
-
-    class Meta:
-        model = Brand
-        fields = (
-            "id",
-            "title_uz",
-            "title_ru",
-            "min_price",
-            "max_price",
-        )
 
 
 class SubCategoryAllSerializer(ModelSerializer):
     min_price = SerializerMethodField()
     max_price = SerializerMethodField()
-    brands = BrandAllSerializer(many=True, read_only=True)
 
     @staticmethod
     def get_min_price(obj) -> float:
@@ -176,77 +125,6 @@ class SubCategoryAllSerializer(ModelSerializer):
             "title_ru",  # noqa
             "min_price",
             "max_price",
-            "brands",
-        )
-
-
-class BrandSerializer(ModelSerializer):
-    min_price = SerializerMethodField()
-    max_price = SerializerMethodField()
-    sub_categories = SerializerMethodField()
-    categories = SerializerMethodField()
-
-    @staticmethod
-    def get_min_price(obj) -> float:
-        return obj.products.aggregate(Min("price"))["price__min"] or 0.0
-
-    @staticmethod
-    def get_max_price(obj) -> float:
-        return obj.products.aggregate(Max("price"))["price__max"] or 0.0
-
-    @staticmethod
-    def get_sub_categories(obj) -> list:
-        brand_sub_categories = SubCategory.objects.filter(brands=obj).distinct()
-
-        sub_category_info = [
-            {
-                "id": sub_category.id,
-                "title_uz": sub_category.title_uz,
-                "title_ru": sub_category.title_ru,
-            }
-            for sub_category in brand_sub_categories
-        ]
-
-        return sub_category_info if sub_category_info else None
-
-    @staticmethod
-    def get_categories(obj) -> list:
-        brand_sub_categories = SubCategory.objects.filter(brands=obj).distinct()
-        categories = Category.objects.filter(
-            sub_categories__in=brand_sub_categories
-        ).distinct()
-
-        category_info = [
-            {
-                "id": category.id,
-                "title_uz": category.title_uz,
-                "title_ru": category.title_ru,
-            }
-            for category in categories
-        ]
-
-        return category_info if category_info else None
-
-    def get_fields(self):
-        fields = super().get_fields()
-        request_method = (
-            self.context["request"].method if "request" in self.context else None
-        )
-        if request_method and request_method in ["GET"]:
-            fields.pop("sub_category", None)
-        return fields
-
-    class Meta:
-        model = Brand
-        fields = (
-            "id",
-            "title_uz",
-            "title_ru",
-            "min_price",
-            "max_price",
-            "sub_category",
-            "sub_categories",
-            "categories",
         )
 
 
@@ -255,49 +133,9 @@ class AllCategorySerializer(ModelSerializer):
 
     min_price = SerializerMethodField()
     max_price = SerializerMethodField()
-    brands = SerializerMethodField()
 
     # sub_categories = SerializerMethodField()
 
-    @staticmethod
-    def get_brands(obj) -> list:
-        sub_categories = obj.sub_categories.all()
-        processed_brand_ids = set()  # To keep track of processed brand ids
-        brand_info = []
-
-        for sub_category in sub_categories:
-            brands = sub_category.brands.all().distinct()
-
-            for brand in brands:
-                if brand.id not in processed_brand_ids:  # Check if brand already processed
-                    brand_categories = Category.objects.filter(
-                        sub_categories=sub_category
-                    ).distinct()
-
-                    min_price = brand.price_range.get("min", 0.0)
-                    max_price = brand.price_range.get("max", 0.0)
-
-                    brand_data = {
-                        "id": brand.id,
-                        "title_uz": brand.title_uz,
-                        "title_ru": brand.title_ru,
-                        "min_price": min_price,
-                        "max_price": max_price,
-                        "sub_categories": SubCategoryAllSerializer(sub_category).data,
-                        "categories": [
-                            {
-                                "id": category.id,
-                                "title_uz": category.title_uz,
-                                "title_ru": category.title_ru,
-                            }
-                            for category in brand_categories
-                        ],
-                    }
-
-                    brand_info.append(brand_data)
-                    processed_brand_ids.add(brand.id)  # Add brand id to processed set
-
-        return brand_info if brand_info else None
 
     @staticmethod
     def get_sub_categories(obj) -> list:
@@ -334,7 +172,6 @@ class AllCategorySerializer(ModelSerializer):
             "is_index",
             "min_price",
             "max_price",
-            "brands",
             "sub_categories",
         )
 
@@ -345,19 +182,6 @@ class CategorySerializer(ModelSerializer):
     min_price = SerializerMethodField()
     max_price = SerializerMethodField()
     count = SerializerMethodField()
-    brands = SerializerMethodField()
-
-    @staticmethod
-    def get_brands(obj) -> list:
-        sub_categories = obj.sub_categories.all()
-        category_brands = Brand.objects.filter(
-            sub_category__in=sub_categories
-        ).distinct()
-        brand_info = [
-            {"id": brand.id, "title_uz": brand.title_uz, "title_ru": brand.title_ru}
-            for brand in category_brands
-        ]
-        return brand_info if brand_info else None
 
     @staticmethod
     def get_count(obj) -> int:
@@ -388,7 +212,6 @@ class CategorySerializer(ModelSerializer):
             "count",
             "min_price",
             "max_price",
-            "brands",
             "sub_categories",
         )
 
@@ -459,7 +282,6 @@ class IndexCategorySerializer(ModelSerializer):
             "image",
             "category",
             "sub_category",
-            "brand",
             "stock",
         )
 
@@ -478,11 +300,6 @@ class IndexCategorySerializer(ModelSerializer):
                 if instance.sub_category
                 else None
             )
-            data["brand"] = (
-                {"id": instance.brand.id, "title": instance.brand.title}
-                if instance.brand
-                else None
-            )
         else:
             data["category"] = (
                 {"id": instance.category.id, "title": instance.category.title}
@@ -494,11 +311,7 @@ class IndexCategorySerializer(ModelSerializer):
                 if instance.sub_category
                 else None
             )
-            data["brand"] = (
-                {"id": instance.brand.id, "title": instance.brand.title}
-                if instance.brand
-                else None
-            )
+           
 
         return data
 
@@ -516,12 +329,7 @@ class IndexCategorySerializer(ModelSerializer):
             return {"id": sub_category.id, "title": sub_category.title}
         return None
 
-    @staticmethod
-    def get_brand(obj):
-        brand = obj.brand
-        if brand:
-            return {"id": brand.id, "title": brand.title}
-        return None
+   
 
     @staticmethod
     def get_stock(obj):
@@ -530,11 +338,9 @@ class IndexCategorySerializer(ModelSerializer):
             return {"id": stock.id, "stock_type": stock.title}
         return None
 
-
 class ProductSearchSerializer(ModelSerializer):
     sub_categories = SerializerMethodField()
     categories = SerializerMethodField()
-    brands = SerializerMethodField()
     image = SerializerMethodField()
 
     class Meta:
@@ -547,9 +353,9 @@ class ProductSearchSerializer(ModelSerializer):
             "sales",
             "categories",
             "sub_categories",
-            "brands",
             "image",
             "slug",
+            "gender",  # Add gender field here
         )
 
     @staticmethod
@@ -563,18 +369,6 @@ class ProductSearchSerializer(ModelSerializer):
             }
         else:
             raise ValueError("Sub-category is not available.")
-
-    @staticmethod
-    def get_brands(obj: Product) -> Optional[Dict[str, str]]:
-        brand = getattr(obj, "brand", None)
-        if brand:
-            return {
-                "id": brand.id,
-                "title_uz": brand.title_uz,
-                "title_ru": brand.title_ru,
-            }
-        else:
-            raise ValueError("Brand is not available.")
 
     @staticmethod
     def get_categories(obj: Product) -> Optional[Dict[str, str]]:
@@ -592,7 +386,7 @@ class ProductSearchSerializer(ModelSerializer):
         request = self.context.get("request")
         first_image = instance.images.first()
 
-        if first_image:
+        if (first_image):
             image_url = request.build_absolute_uri(first_image.image.url)
             return {"id": first_image.id, "image": image_url}
         else:
@@ -603,7 +397,6 @@ class ProductSerializer(SymbolValidationMixin, ModelSerializer):
     sub_categories = SerializerMethodField()
     categories = SerializerMethodField()
     index_categories = SerializerMethodField()
-    brands = SerializerMethodField()
     images = SerializerMethodField()
     image_ids = ListField(
         write_only=True,
@@ -629,14 +422,13 @@ class ProductSerializer(SymbolValidationMixin, ModelSerializer):
             "description_ru",
             "is_available",
             "sub_category",
-            "brand",
             "index_category",
             "index_categories",
-            "brands",
             "sub_categories",
             "short_descriptions",
             "created_at",
             "slug",
+            "gender",  # Add gender field here
         )
 
     def create(self, validated_data):
@@ -665,15 +457,14 @@ class ProductSerializer(SymbolValidationMixin, ModelSerializer):
         instance.description_ru = validated_data.get("description_ru", instance.description_ru)
         instance.is_available = validated_data.get("is_available", instance.is_available)
         instance.sub_category = validated_data.get("sub_category", instance.sub_category)
-        instance.brand = validated_data.get("brand", instance.brand)
         instance.stock = validated_data.get("stock", instance.stock)
+        instance.gender = validated_data.get("gender", instance.gender)  # Add gender update
 
         # Update or create short_descriptions
         short_descriptions_data = validated_data.pop("short_descriptions", [])
         instance.short_descriptions.all().delete()
         for short_description_data in short_descriptions_data:
             ShortDescription.objects.create(product=instance, **short_description_data)
-
 
         # Update index_category
         index_category_data = validated_data.get("index_category")
@@ -771,8 +562,6 @@ class ProductSerializer(SymbolValidationMixin, ModelSerializer):
         if request_method in ["GET"]:
             fields.pop("sub_category", None)
         if request_method in ["GET"]:
-            fields.pop("brand", None)
-        if request_method in ["GET"]:
             fields.pop("category", None)
         if request_method in ["GET"]:
             fields.pop("index_category", None)
@@ -789,18 +578,6 @@ class ProductSerializer(SymbolValidationMixin, ModelSerializer):
             }
         else:
             raise ValueError("Sub-category is not available.")
-
-    @staticmethod
-    def get_brands(obj: Product) -> Optional[Dict[str, str]]:
-        brand = getattr(obj, "brand", None)
-        if brand:
-            return {
-                "id": brand.id,
-                "title_uz": brand.title_uz,
-                "title_ru": brand.title_ru,
-            }
-        else:
-            raise ValueError("Brand is not available.")
 
     @staticmethod
     def get_categories(obj: Product) -> Optional[Dict[str, str]]:
@@ -830,7 +607,6 @@ class ProductSerializer(SymbolValidationMixin, ModelSerializer):
 class ProductCatalogSerializer(ModelSerializer):
     images = SerializerMethodField()
     stock = StockSerializer()
-    brand = SerializerMethodField()
     short_descriptions = ShortDescriptionSerializer(many=True, required=False)
 
     class Meta:
@@ -841,11 +617,11 @@ class ProductCatalogSerializer(ModelSerializer):
             "title_ru",
             "price",
             "sales",
-            "brand",
             "stock",
             "images",
             "short_descriptions",
             "slug",
+            "gender",  # Add gender field here
         )
 
     def to_representation(self, instance):
@@ -857,11 +633,8 @@ class ProductCatalogSerializer(ModelSerializer):
 
         return representation
 
-    def get_brand(self, instance: "Product") -> str:
-        return instance.brand.title
-
     def get_images(self, instance: "Product") -> List[Dict[str, Any]]:
-        request = self.context.get("request")  # noqa
+        request = self.context.get("request")
         images_data = instance.images.all()
         serialized_images = []
 
@@ -870,6 +643,7 @@ class ProductCatalogSerializer(ModelSerializer):
             serialized_images.append({"id": image.id, "image": image_url})
 
         return serialized_images
+
 
 
 class BannerSerializer(ModelSerializer):
@@ -884,7 +658,6 @@ class BannerSerializer(ModelSerializer):
             "is_advertisement",
             "category",
             "sub_category",
-            "brand",
             "product",
             "stock",
         )
@@ -906,12 +679,10 @@ class BannerSerializer(ModelSerializer):
             data["sub_category"] = (
                 instance.sub_category.id if instance.sub_category else None
             )
-            data["brand"] = instance.brand.id if instance.brand else None
             data["product"] = instance.product.id if instance.product else None
         else:
             data["category"] = self.get_category(instance)
             data["sub_category"] = self.get_sub_category(instance)
-            data["brand"] = self.get_brand(instance)
             data["product"] = self.get_product(instance)
 
         return data
@@ -942,15 +713,6 @@ class BannerSerializer(ModelSerializer):
             }
         return None
 
-    def get_brand(self, obj):
-        brand = obj.brand
-        if brand:
-            return {
-                "id": brand.id,
-                "title_uz": brand.title_uz,
-                "title_ru": brand.title_ru,
-            }
-        return None
 
     def get_product(self, obj):
         product = obj.product

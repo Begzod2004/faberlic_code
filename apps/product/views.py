@@ -22,11 +22,11 @@ from rest_framework.status import (HTTP_200_OK, HTTP_201_CREATED,
 from rest_framework.views import APIView
 from rest_framework.viewsets import GenericViewSet
 
-from apps.product.models import (Banner, Brand, Category, 
+from apps.product.models import (Banner, Category, 
                                  IndexCategory, Order, OrderUser,
                                  ShortDescription, Stock, SubCategory)
 from apps.product.serializers import (AllCategorySerializer, BannerSerializer,
-                                      BrandSerializer, CategoryCountSerializer,
+                                      CategoryCountSerializer,
                                       CategorySerializer,
                                       ImageModelSerializer,
                                       IndexCategorySerializer,
@@ -174,8 +174,6 @@ class AllCategoryViewSet(mixins.ListModelMixin, GenericViewSet):
         min_price_all = float("inf")
         max_price_all = float("-inf")
 
-        all_brands = Brand.objects.all()
-        brand_info = []
         for category in all_categories:
             # Calculate min and max prices for the current category
             min_price_category = (
@@ -201,26 +199,9 @@ class AllCategoryViewSet(mixins.ListModelMixin, GenericViewSet):
             )
 
             # Add category data to the response
-            brand_info.append(
-                {
-                    "id": category.id,
-                    "title_uz": category.title_uz,
-                    "title_ru": category.title_ru,
-                    "image": serializer.data["image"],
-                    "min_price": min_price_category,
-                    "max_price": max_price_category,
-                    "brands": serializer.data["brands"],
-                    "sub_categories": serializer.data["sub_categories"],
-                }
-            )
-
+          
         # Build the response data
-        data = {
-            "min_price": min_price_all,
-            "max_price": max_price_all,
-            "all_catalog": brand_info,
-            "brands": BrandSerializer(all_brands, many=True).data,
-        }
+       
 
         return Response(data, status=status.HTTP_200_OK)
 
@@ -341,40 +322,6 @@ class SubCategoryDetailUpdateDestroyView(RetrieveUpdateDestroyAPIView):
     def delete(self, request, *args, **kwargs):
         return super().delete(request, *args, **kwargs)
 
-
-class BrandListCreateView(ListCreateAPIView):
-    queryset = Brand.objects.all().order_by("-id")
-    serializer_class = BrandSerializer
-
-    @extend_schema(tags=["brands"])
-    def get(self, request, *args, **kwargs):
-        return super().get(request, *args, **kwargs)
-
-    @extend_schema(tags=["brands"])
-    def post(self, request, *args, **kwargs):
-        return super().post(request, *args, **kwargs)
-
-
-class BrandDetailUpdateDestroyView(RetrieveUpdateDestroyAPIView):
-    queryset = Brand.objects.all()
-    serializer_class = BrandSerializer
-    lookup_field = "id"
-
-    @extend_schema(tags=["brands"])
-    def get(self, request, *args, **kwargs):
-        return super().get(request, *args, **kwargs)
-
-    @extend_schema(tags=["brands"])
-    def put(self, request, *args, **kwargs):
-        return super().put(request, *args, **kwargs)
-
-    @extend_schema(tags=["brands"])
-    def patch(self, request, *args, **kwargs):
-        return super().patch(request, *args, **kwargs)
-
-    @extend_schema(tags=["brands"])
-    def delete(self, request, *args, **kwargs):
-        return super().delete(request, *args, **kwargs)
 
 
 class IndexCategoryListCreateView(ListCreateAPIView):
@@ -756,6 +703,102 @@ class BannerListView(ListAPIView):
 #         return Response(serializer.errors, status=status.HTTP_400_BAD_REQUEST)
 
 
+# <<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<USTIDA ISHLANVOTI>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>
+# class SubmitOrderView(CreateAPIView):
+#     serializer_class = OrderUserSerializer
+
+#     @transaction.atomic
+#     @extend_schema(tags=["orders"])
+#     def post(self, request, *args, **kwargs):
+#         serializer = self.get_serializer(data=request.data)
+#         if serializer.is_valid():
+#             order_items = serializer.validated_data.get("order", [])
+#             total_price = 0
+#             order_text = ""
+#             product_ids_in_order = set()
+
+#             # Initialize order_user
+#             order_user = None
+
+#             for item in order_items:
+#                 product_id = item.get("product_id")
+#                 product_count = item.get("count", 0)
+
+#                 try:
+#                     # Ensure product_id is an integer
+#                     product = Product.objects.get(id=product_id)
+#                     product_title = product.title_uz
+#                 except Product.DoesNotExist:
+#                     raise Http404(f"Product with ID {product_id} not found")
+
+#                 # Determine the price
+#                 product_price = product.sales if product.sales is not None else product.price
+#                 discounted_price = product.price if product.sales is not None else None
+
+#                 product_total_price = product_count * product_price
+#                 total_price += product_total_price
+
+#                 product_detail = (
+#                     f"🔹 Tovar: {product_title}\n"
+#                     f"🔸 Soni: {product_count}\n"
+#                     f"🔸 Narxi: {product_price}\n"
+#                 )
+#                 if discounted_price:
+#                     product_detail += f"🔸 Asl narxi: {discounted_price}\n"
+#                 order_text += product_detail
+
+#                 if product_id not in product_ids_in_order:
+#                     product_ids_in_order.add(product_id)
+
+#                 # Save the order_user if it's the first product
+#                 if order_user is None:
+#                     order_user = serializer.save(
+#                         total_price=total_price, product_title=product_title
+#                     )
+
+#                 # Save each order item
+#                 Order.objects.create(
+#                     product=product,  # Use Product object directly
+#                     product_title=product_title,
+#                     count=product_count,
+#                     order=order_user,
+#                 )
+
+#             # Extract user details from the order_user
+#             name = order_user.name or "Noma'lum"
+#             phone = order_user.phone
+#             address = order_user.address or "Noma'lum"
+
+#             text = (
+#                 f"📦 Yangi zakaz tushdi 📦\n\n"
+#                 f"👤 Ism: {name}\n"
+#                 f"📞 Telefon Nomer: {phone}\n"
+#                 f"🏠 Manzil: {address}\n\n"
+#                 f"🛒 Zakaz qilingan tovarlar:\n\n{order_text}"
+#                 f"💰 Umumiy narxi: {total_price}\n"
+#             )
+
+#             # Load bot token and user IDs from environment variables
+#             token = os.getenv("TELEGRAM_BOT_TOKEN")
+#             user_ids = os.getenv("TELEGRAM_USER_IDS", "").split()
+
+#             for user_id in user_ids:
+#                 url = f"https://api.telegram.org/bot{token}/sendMessage"
+#                 params = {
+#                     "chat_id": user_id,
+#                     "text": text,
+#                     "parse_mode": "HTML"  # Enable HTML parsing for better formatting
+#                 }
+#                 requests.get(url, params=params)
+
+#             return Response(serializer.data, status=status.HTTP_201_CREATED)
+
+#         return Response(serializer.errors, status=status.HTTP_400_BAD_REQUEST)
+
+
+
+
+
 class SubmitOrderView(CreateAPIView):
     serializer_class = OrderUserSerializer
 
@@ -839,6 +882,7 @@ class SubmitOrderView(CreateAPIView):
 
 
 
+
 class OrderListView(ListAPIView):
     queryset = OrderUser.objects.order_by("-created_at")
     serializer_class = OrderUserGetSerializer
@@ -848,3 +892,5 @@ class OrderListView(ListAPIView):
     @extend_schema(tags=["orders"])
     def get(self, request, *args, **kwargs):
         return super().get(request, *args, **kwargs)
+
+

@@ -43,15 +43,6 @@ class SubCategory(Model):
     category = ForeignKey(Category, on_delete=CASCADE, related_name="sub_categories")
 
 
-class Brand(Model):
-    title = CharField(max_length=255, unique=True)
-    sub_category = ManyToManyField(SubCategory, related_name="brands")
-
-    @property
-    def price_range(self):
-        return calculate_price_range(self.products.all(), "price")
-
-
 class Images(Model):
     image = ImageField(upload_to=generate_unique_filename, null=True, blank=True)
 
@@ -77,36 +68,29 @@ class IndexCategory(Model):
         null=True,
         blank=True,
     )
-    brand = ForeignKey(
-        Brand, on_delete=CASCADE, related_name="index_brands", null=True, blank=True
-    )
     stock = ForeignKey(
         Stock, on_delete=CASCADE, related_name="index_stock", null=True, blank=True
     )
 
-
 class Product(Model):
+    GENDER_CHOICES = [
+        ('M', 'Erkak (Male)'),
+        ('F', 'Ayol (Female)'),
+        ('U', 'Unisex'),
+    ]
+
     title = CharField(max_length=255)
     price = IntegerField()
     sales = IntegerField(null=True, blank=True)
     images = ManyToManyField(Images, related_name="product_images")
     description = TextField()
     is_available = BooleanField(default=True)
-
-    stock = ForeignKey(
-        Stock, on_delete=CASCADE, related_name="product_stock", null=True, blank=True
-    )
+    stock = ForeignKey(Stock, on_delete=CASCADE, related_name="product_stock", null=True, blank=True)
     sub_category = ForeignKey(SubCategory, on_delete=CASCADE, related_name="products")
     category = ForeignKey(Category, on_delete=CASCADE, related_name="products")
-    index_category = ForeignKey(
-        IndexCategory,
-        CASCADE,
-        related_name="index_category_products",
-        null=True,
-        blank=True,
-    )
-    brand = ForeignKey(Brand, on_delete=CASCADE, related_name="products")
+    index_category = ForeignKey(IndexCategory, on_delete=CASCADE, related_name="index_category_products", null=True, blank=True)
     slug = SlugField(max_length=255, unique=True)
+    gender = CharField(max_length=1, choices=GENDER_CHOICES, default='U')
 
     created_at = DateTimeField(auto_now_add=True)
     updated_at = DateTimeField(auto_now=True)
@@ -136,6 +120,20 @@ class Product(Model):
         if self.index_category:
             self.index_category.save()
 
+
+    def clean(self):
+        if self.sales and self.sales < 0:
+            raise ValidationError("Sales must be a non-negative value.")
+        if self.sales and self.sales > self.price:
+            raise ValidationError("Sales cannot be greater than the price.")
+
+    @property
+    def discounted_price(self):
+        if self.sales:
+            return self.price - self.sales
+        return self.price
+
+
     @property
     def min_price(self):
         return Product.objects.aggregate(Min("price"))["price__min"] or 0
@@ -145,6 +143,8 @@ class Product(Model):
         return Product.objects.aggregate(Max("price"))["price__max"] or 0
 
 
+
+# Banner bu >>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>
 class Banner(Model):
     web_image = ImageField(
         max_length=255, upload_to=generate_unique_filename, null=True
@@ -166,9 +166,6 @@ class Banner(Model):
         related_name="banner_sub_categories",
         null=True,
         blank=True,
-    )
-    brand = ForeignKey(
-        Brand, on_delete=CASCADE, related_name="banner_brands", null=True, blank=True
     )
     stock = ForeignKey(
         Stock, on_delete=CASCADE, related_name="banner_stock", null=True, blank=True

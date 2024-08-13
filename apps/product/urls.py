@@ -44,16 +44,6 @@ urlpatterns = [
         name="category-retrieve-update-destroy",
     ),
     path(
-        "brands/",
-        views.BrandListCreateView.as_view(),
-        name="brand-list-create",
-    ),
-    path(
-        "brands/<int:id>/",
-        views.BrandDetailUpdateDestroyView.as_view(),
-        name="brand-retrieve-update-destroy",
-    ),
-    path(
         "products/",
         views.ProductListCreateView.as_view(),
         name="products-list-create",

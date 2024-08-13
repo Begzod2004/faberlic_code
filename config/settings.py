@@ -56,6 +56,7 @@ MIDDLEWARE = [
     'django.middleware.csrf.CsrfViewMiddleware',
     'django.contrib.auth.middleware.AuthenticationMiddleware',
     'django.contrib.messages.middleware.MessageMiddleware',
+    'django.middleware.locale.LocaleMiddleware',
     'django.middleware.clickjacking.XFrameOptionsMiddleware',
     "django.middleware.gzip.GZipMiddleware",
 ]
@@ -186,7 +187,6 @@ SPECTACULAR_SETTINGS = {
     'SERVE_INCLUDE_SCHEMA': False,
     'REDOC_DIST': 'path/to/redoc',
 }
-
 
 LANGUAGE_CODE = "ru-uz"
 MODELTRANSLATION_DEFAULT_LANGUAGE = "ru"

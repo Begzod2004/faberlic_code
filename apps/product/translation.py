@@ -1,6 +1,6 @@
 from modeltranslation.translator import TranslationOptions, register
 
-from apps.product.models import (Banner, Brand, Category,
+from apps.product.models import (Banner, Category,
                                  IndexCategory, Product, ShortDescription,
                                  Stock, SubCategory)
 
@@ -15,9 +15,6 @@ class SubCategoryTranslation(TranslationOptions):
     fields = ("title",)
 
 
-@register(Brand)
-class BrandTranslation(TranslationOptions):
-    fields = ("title",)
 
 
 @register(Product)

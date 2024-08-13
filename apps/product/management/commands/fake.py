@@ -1,7 +1,7 @@
 import random
 from faker import Faker
 from django.core.management.base import BaseCommand
-from apps.product.models import Category, SubCategory, Brand, Product, Stock, Images, OrderUser, Order, ShortDescription
+from apps.product.models import Category, SubCategory, Product, Stock, Images, OrderUser, Order, ShortDescription
 
 
 
@@ -17,7 +17,6 @@ class Command(BaseCommand):
         # Clear existing data
         Category.objects.all().delete()
         SubCategory.objects.all().delete()
-        Brand.objects.all().delete()
         Product.objects.all().delete()
         Stock.objects.all().delete()
         # Images.objects.all().delete()
@@ -47,22 +46,7 @@ class Command(BaseCommand):
             )
             subcategories.append(subcategory)
 
-        # Seed brands
-        brand_titles_uz = set()
-        brands = []
-        for _ in range(5):
-            title_uz = fake_ru.word()
-            while title_uz in brand_titles_uz:
-                title_uz = fake_ru.word()
-            brand_titles_uz.add(title_uz)
-            brand = Brand.objects.create(
-                title=fake_en.word(),
-                title_ru=fake_ru.word(),
-                title_uz=title_uz  # Unique Uzbek data
-            )
-            brand.sub_category.set(random.sample(subcategories, k=3))
-            brands.append(brand)
-
+        
         # Seed stock
         stocks = []
         for _ in range(10):
@@ -88,7 +72,6 @@ class Command(BaseCommand):
                 stock=random.choice(stocks),
                 sub_category=random.choice(subcategories),
                 category=random.choice(categories),
-                brand=random.choice(brands),
             )
 
             # Create a ShortDescription for each product

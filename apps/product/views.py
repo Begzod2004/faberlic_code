@@ -21,6 +21,8 @@ from rest_framework.status import (HTTP_200_OK, HTTP_201_CREATED,
                                    HTTP_400_BAD_REQUEST)
 from rest_framework.views import APIView
 from rest_framework.viewsets import GenericViewSet
+from dotenv import load_dotenv
+load_dotenv()
 
 from apps.product.models import (Banner, Category, 
                                  IndexCategory, Order, OrderUser,
@@ -648,10 +650,13 @@ class SubmitOrderView(CreateAPIView):
             return
 
         # user_ids = ["1237819772",]
-        user_ids = os.environ.get("USER_IDS").split(" ")
+        user_ids = os.environ.get("USER_IDS", "").split(" ")
+        if not user_ids:
+            raise ValueError("USER_IDS environment variable is not set")
 
         for user_id in user_ids:
             response = self._send_telegram_message(token, user_id, text)
+
 
     @staticmethod
     def _send_telegram_message(token, user_id, text):

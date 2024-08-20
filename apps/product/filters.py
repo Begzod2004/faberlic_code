@@ -1,10 +1,10 @@
 from django.db.models import Q
 from django_filters import CharFilter, FilterSet, NumberFilter, OrderingFilter
-
+from django_filters import rest_framework as filters
 from apps.product.models import Product
 from django_filters import FilterSet, CharFilter, NumberFilter, OrderingFilter
 from django.db.models import Q
-from apps.product.models import Product
+from apps.product.models import Product, OrderUser
 
 class ProductFilter(FilterSet):
     category = CharFilter(method="filter_category_title")
@@ -132,3 +132,14 @@ class ProductSearchFilter(FilterSet):
     class Meta:
         model = Product
         fields = []
+
+
+class OrderUserFilter(filters.FilterSet):
+    class Meta:
+        model = OrderUser
+        fields = {
+            "name": ["exact", "icontains"],
+            "phone": ["exact"],
+            "created_at": ["year", "month", "day"],
+            # Add other fields as necessary
+        }

@@ -720,44 +720,27 @@ class BannerSerializer(ModelSerializer):
             return {"id": product.id, "title": product.title}
         return None
 
+class OrderSerializer(serializers.ModelSerializer):
+    product_id = serializers.PrimaryKeyRelatedField(
+        queryset=Product.objects.all(), write_only=True
+    )
 
-class OrderSerializer(ModelSerializer):
     class Meta:
         model = Order
-        fields = (
-            "id",
-            "product_id",
-            "title",
-            "price",
-            "sales",
-            "count",
-            "product_title",
-            "created_at",
-        )
-
-    title = serializers.CharField(source="product_id.title", read_only=True)
-    price = serializers.IntegerField(source="product_id.price", read_only=True)
-    sales = serializers.IntegerField(source="product_id.sales", read_only=True)
+        fields = ("product_id", "count", "created_at")
+        extra_kwargs = {
+            "total_price": {"required": False},
+        }
 
     def to_representation(self, instance):
         representation = super().to_representation(instance)
-        representation["created_at"] = instance.created_at.strftime("%Y-%m-%d")
-
+        representation[
+            "product_title"
+        ] = instance.product_id.title_uz  # Adjust field as needed
         return representation
 
-    def get_fields(self):
-        fields = super().get_fields()
-        request_method = (
-                self.context.get("request", None) and self.context["request"].method
-        )
 
-        if request_method and request_method in ["POST"]:
-            fields.pop("product_title", None)
-
-        return fields
-
-
-class OrderUserSerializer(ModelSerializer):
+class OrderUserSerializer(serializers.ModelSerializer):
     order = OrderSerializer(many=True, required=False)
 
     class Meta:
@@ -768,18 +751,21 @@ class OrderUserSerializer(ModelSerializer):
         order_data = validated_data.pop("order", [])
         order_user = OrderUser.objects.create(**validated_data)
         for order_item_data in order_data:
-            order_item_data["order"] = order_user
-            Order.objects.create(**order_item_data)
+            Order.objects.create(
+                order=order_user,
+                product_id=order_item_data[
+                    "product_id"
+                ],  # Ensure product_id is passed as an integer
+                count=order_item_data["count"],
+            )
         return order_user
 
     def to_representation(self, instance):
         representation = super().to_representation(instance)
         representation["order"] = OrderSerializer(
-            instance.user_order.all(), many=True
+            instance.user_orders.all(), many=True
         ).data
-
         representation["created_at"] = instance.created_at.strftime("%Y-%m-%d")
-
         return representation
 
 
@@ -830,3 +816,37 @@ class OrderUserGetSerializer(serializers.ModelSerializer):
         representation["created_at"] = instance.created_at.strftime("%Y-%m-%d")
 
         return representation
+
+
+class OrderUserAnalyticsSerializer(serializers.ModelSerializer):
+    total_sales_amount = serializers.ReadOnlyField()
+    average_order_value = serializers.ReadOnlyField()
+    recent_orders = serializers.SerializerMethodField()
+    most_frequent_products = serializers.SerializerMethodField()
+    orders_over_time = serializers.SerializerMethodField()
+
+
+    class Meta:
+        model = OrderUser
+        fields = [
+            "id",
+            "name",
+            "phone",
+            "address",
+            "total_sales_amount",
+            "average_order_value",
+            "recent_orders",
+            "most_frequent_products",
+            "orders_over_time",
+        ]
+
+
+    def get_recent_orders(self, obj):
+        recent_orders = obj.recent_orders
+        return OrderSerializer(recent_orders, many=True).data
+
+    def get_most_frequent_products(self, obj):
+        return obj.most_frequent_products
+
+    def get_orders_over_time(self, obj):
+        return [date.strftime("%Y-%m-%d") for date in obj.orders_over_time]

@@ -5,7 +5,7 @@ from django.db import transaction
 from django.db.models import Max, Min
 from django.http import Http404
 from django_filters.rest_framework import DjangoFilterBackend
-from drf_spectacular.utils import extend_schema
+from drf_spectacular.utils import extend_schema, OpenApiParameter
 from requests import Request
 from rest_framework import mixins, status
 from rest_framework.filters import SearchFilter
@@ -35,28 +35,37 @@ from apps.product.serializers import (AllCategorySerializer, BannerSerializer,
                                       ProductCatalogSerializer,
                                       ProductSearchSerializer,
                                       ProductSerializer,
+                                      OrderUserAnalyticsSerializer,
                                       ShortDescriptionSerializer,
                                       StockSerializer, SubCategorySerializer)
 from config.settings import MEDIA_ROOT
 
-from .filters import ProductFilter, ProductSearchFilter
+from .filters import ProductFilter, ProductSearchFilter, OrderUserFilter
 from .models import Images, Product
 from .pagination import CustomPagination
 from .serializers import OrderUserSerializer
 
 
 class SearchListApiView(ListAPIView):
-    queryset = Product.objects.all().order_by("-id")
-    renderer_classes = [JSONRenderer]
     serializer_class = ProductSearchSerializer
-    filter_backends = (SearchFilter, DjangoFilterBackend)
+    renderer_classes = [JSONRenderer]
+    filter_backends = [DjangoFilterBackend]
     filterset_class = ProductSearchFilter
-    search_fields = ("title_uz", "title_ru")
     pagination_class = CustomPagination
 
-    @extend_schema(tags=["catalog-search"])
-    def get(self, request, *args, **kwargs):
-        return super().get(request, *args, **kwargs)
+    def get_queryset(self):
+        """
+        Возвращает продукты в порядке убывания ID с изображениями и необходимыми полями.
+        """
+        queryset = Product.objects.all().order_by("-id")
+
+        queryset = queryset.select_related(
+            "stock", "sub_category", "category"
+        ).prefetch_related("images")
+
+        return queryset
+
+
 
 
 # Image API
@@ -382,40 +391,67 @@ class ProductListCreateView(ListCreateAPIView):
         return Response(serializer.data, status=status.HTTP_201_CREATED)
 
 
+
+
 class ProductCatalogView(ListAPIView):
     serializer_class = ProductCatalogSerializer
-    queryset = Product.objects.all().order_by("-id")
     filter_backends = (DjangoFilterBackend,)
     filterset_class = ProductFilter
     ordering_fields = ("price", "title_ru", "title_uz")
     pagination_class = CustomPagination
 
+    def get_queryset(self):
+        ordering = self.request.query_params.get("ordering", "-id")
+
+        # Очистка параметра сортировки для проверки его корректности
+
+        if ordering not in self.ordering_fields:
+            ordering = "-id"
+
+        queryset = Product.objects.all().order_by(ordering)
+
+        # Использовать select_related для загрузки связанных объектов одним запросом
+
+        queryset = queryset.select_related("stock", "sub_category", "category")
+
+        # Использовать prefetch_related для оптимизации многих-ко-многим и обратных связей
+
+        queryset = queryset.prefetch_related("images")
+
+        return queryset
+
     @extend_schema(tags=["catalog-product"])
     def get(self, request, *args, **kwargs):
-        queryset = Product.objects.all().order_by("pk")
-        return self.list(request, *args, queryset=queryset, **kwargs)
+        return self.list(request, *args, **kwargs)
+
+
 
 
 class ProductDetailUpdateDestroyView(RetrieveUpdateDestroyAPIView):
-    queryset = Product.objects.all()
+    queryset = Product.objects.all().select_related("stock", "sub_category", "category")
     serializer_class = ProductSerializer
     lookup_field = "slug"
 
     @extend_schema(tags=["products"])
     def get(self, request, *args, **kwargs):
+        # Обрабатывает GET-запросы для получения деталей продукта.
         return super().get(request, *args, **kwargs)
 
     @extend_schema(tags=["products"])
     def put(self, request, *args, **kwargs):
+        # Обрабатывает PUT-запросы для обновления продукта.
         return super().put(request, *args, **kwargs)
 
     @extend_schema(tags=["products"])
     def patch(self, request, *args, **kwargs):
+        # Обрабатывает PATCH-запросы для частичного обновления продукта.
         return super().patch(request, *args, **kwargs)
 
     @extend_schema(tags=["products"])
     def delete(self, request, *args, **kwargs):
+        # Обрабатывает DELETE-запросы для удаления продукта.
         return super().delete(request, *args, **kwargs)
+
 
 
 class ShortDescriptionListCreateView(ListCreateAPIView):
@@ -500,6 +536,7 @@ class BannerListCreateView(ListCreateAPIView):
         serializer.data["rsp_image"] = images_serializer.data["rsp_image"]
 
 
+
 class BannerDetailUpdateDestroyView(RetrieveUpdateDestroyAPIView):
     queryset = Banner.objects.all()
     serializer_class = BannerSerializer
@@ -510,39 +547,6 @@ class BannerDetailUpdateDestroyView(RetrieveUpdateDestroyAPIView):
     def get(self, request, *args, **kwargs):
         return super().get(request, *args, **kwargs)
 
-    # @extend_schema(tags=["banner"])
-    # def put(self, request, *args, **kwargs):
-    #     instance = self.get_object()
-    #
-    #     # Extract and process the stock field from the request data
-    #     stock_name = request.data.get("stock")
-    #     print("Stock name from request:", stock_name)
-    #
-    #     if stock_name:
-    #         stock = get_object_or_404(Stock, title=stock_name)
-    #         instance.stock = stock
-    #         instance.save()  # Save the instance with the updated stock
-    #         print("Stock from request:", stock)
-    #
-    #     # Create the serializer instance with the modified request data
-    #     serializer = self.get_serializer(instance, data=request.data)
-    #     serializer.is_valid(raise_exception=True)
-    #
-    #     # Handle images for the banner
-    #     web_image = request.data.get("web_image")
-    #     rsp_image = request.data.get("rsp_image")
-    #
-    #     if web_image:
-    #         instance.web_image = web_image
-    #     if rsp_image:
-    #         instance.rsp_image = rsp_image
-    #
-    #     # Save the instance with the updated serializer
-    #     serializer.save()
-    #
-    #     response_data = serializer.data
-    #
-    #     return Response(response_data)
 
     @extend_schema(tags=["banner"])
     def put(self, request, *args, **kwargs):
@@ -566,237 +570,6 @@ class BannerListView(ListAPIView):
         return super().get(request, *args, **kwargs)
 
 
-# class SubmitOrderView(CreateAPIView):
-#     serializer_class = OrderUserSerializer
-#
-#     @transaction.atomic
-#     @extend_schema(tags=["orders"])
-#     def post(self, request, *args, **kwargs):
-#         serializer = self.get_serializer(data=request.data)
-#         if serializer.is_valid():
-#             order_items = serializer.validated_data.get("order", [])
-#             total_price = 0
-#             order_text = ""
-#             product_ids_in_order = set()
-#
-#             for item in order_items:
-#                 product_id = item.get("product_id", 0)
-#                 product_count = item.get("count", 0)
-#
-#                 try:
-#                     product = item.get("product_id")
-#                     product_id = product.id if product else None
-#                 except Product.DoesNotExist:
-#                     raise Http404(f"Product with ID {product_id} not found")
-#
-#                 product_price = product.sales if product.sales else product.price
-#
-#                 product_total_price = product_count * product_price
-#                 total_price += product_total_price
-#
-#                 product_detail = f"🔹 Tovar: {product.title_uz}\n🔸 Soni: {product_count}\n🔸 Narxi: {product_price}\n"
-#                 order_text += product_detail
-#
-#                 if product_id not in product_ids_in_order:
-#                     product_ids_in_order.add(product_id)
-#
-#             order_user = serializer.save(total_price=total_price)
-#
-#             name = order_user.name
-#             phone = order_user.phone
-#             address = order_user.address
-#
-#             text = f"\n\n\n\n\n📦 Yangi zakaz tushdi 📦\n\n"
-#             text += f"👤 Ism: {name}\n📞 Telefon Nomer: {phone}\n🏠 Manzil: {address}\n"
-#             text += "\n\n🛒 Zakaz qilingan tovarlar: \n\n"
-#             text += order_text
-#             text += f"\n💰 Umumiy narxi: {total_price}"
-#
-#             token = os.environ.get("BOT_TOKEN")
-#             user_ids = ["1237819772", "95665294"]
-#
-#             for user_id in user_ids:
-#                 url = f"https://api.telegram.org/bot{token}/sendMessage?chat_id={user_id}&text={text}"
-#                 print(requests.get(url))
-#
-#             return Response(serializer.data, status=status.HTTP_201_CREATED)
-#
-#         return Response(serializer.errors, status=status.HTTP_400_BAD_REQUEST)
-
-
-# class SubmitOrderView(CreateAPIView):
-#     serializer_class = OrderUserSerializer
-
-#     @transaction.atomic
-#     @extend_schema(tags=["orders"])
-#     def post(self, request, *args, **kwargs):
-#         serializer = self.get_serializer(data=request.data)
-#         if serializer.is_valid():
-#             order_items = serializer.validated_data.get("order", [])
-#             total_price = 0
-#             order_text = ""
-#             product_ids_in_order = set()
-
-#             # Declare order_user variable here
-#             order_user = None
-
-#             for item in order_items:
-#                 product_id = item.get("product_id", 0)
-#                 product_count = item.get("count", 0)
-
-#                 try:
-#                     product = item.get("product_id")
-#                     if isinstance(
-#                         product, Product
-#                     ):  # Check if it's already a Product object
-#                         product_id = product.id
-#                         product_title = product.title_uz
-#                     else:
-#                         product = Product.objects.get(id=product_id)
-#                         product_title = product.title_uz
-#                 except Product.DoesNotExist:
-#                     raise Http404(f"Product with ID {product_id} not found")
-
-#                 product_price = product.sales if product.sales else product.price
-
-#                 product_total_price = product_count * product_price
-#                 total_price += product_total_price
-
-#                 product_detail = f"🔹 Tovar: {product_title}\n🔸 Soni: {product_count}\n🔸 Narxi: {product_price}\n"
-#                 order_text += product_detail
-
-#                 if product_id not in product_ids_in_order:
-#                     product_ids_in_order.add(product_id)
-
-#                 # Save the order with product_title
-#                 if order_user is None:
-#                     order_user = serializer.save(
-#                         total_price=total_price, product_title=product_title
-#                     )
-
-#                 Order.objects.create(
-#                     product_id=product,
-#                     product_title=product_title,
-#                     count=product_count,
-#                     order=order_user,
-#                 )
-
-#             name = order_user.name
-#             phone = order_user.phone
-#             address = order_user.address
-
-#             text = f"\n\n\n\n\n📦 Yangi zakaz tushdi 📦\n\n"
-#             text += f"👤 Ism: {name}\n📞 Telefon Nomer: {phone}\n🏠 Manzil: {address}\n"
-#             text += "\n\n🛒 Zakaz qilingan tovarlar: \n\n"
-#             text += order_text
-#             text += f"\n💰 Umumiy narxi: {total_price}"
-
-#             token = "7395086423:AAHPd2zrNTuRx60ioTq08uhbw5TP3INmd8Q"
-#             user_ids = ["5274871404"]
-
-#             for user_id in user_ids:
-#                 url = f"https://api.telegram.org/bot{token}/sendMessage?chat_id={user_id}&text={text}"
-#                 print(requests.get(url))
-
-#             return Response(serializer.data, status=status.HTTP_201_CREATED)
-
-#         return Response(serializer.errors, status=status.HTTP_400_BAD_REQUEST)
-
-
-# <<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<USTIDA ISHLANVOTI>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>
-# class SubmitOrderView(CreateAPIView):
-#     serializer_class = OrderUserSerializer
-
-#     @transaction.atomic
-#     @extend_schema(tags=["orders"])
-#     def post(self, request, *args, **kwargs):
-#         serializer = self.get_serializer(data=request.data)
-#         if serializer.is_valid():
-#             order_items = serializer.validated_data.get("order", [])
-#             total_price = 0
-#             order_text = ""
-#             product_ids_in_order = set()
-
-#             # Initialize order_user
-#             order_user = None
-
-#             for item in order_items:
-#                 product_id = item.get("product_id")
-#                 product_count = item.get("count", 0)
-
-#                 try:
-#                     # Ensure product_id is an integer
-#                     product = Product.objects.get(id=product_id)
-#                     product_title = product.title_uz
-#                 except Product.DoesNotExist:
-#                     raise Http404(f"Product with ID {product_id} not found")
-
-#                 # Determine the price
-#                 product_price = product.sales if product.sales is not None else product.price
-#                 discounted_price = product.price if product.sales is not None else None
-
-#                 product_total_price = product_count * product_price
-#                 total_price += product_total_price
-
-#                 product_detail = (
-#                     f"🔹 Tovar: {product_title}\n"
-#                     f"🔸 Soni: {product_count}\n"
-#                     f"🔸 Narxi: {product_price}\n"
-#                 )
-#                 if discounted_price:
-#                     product_detail += f"🔸 Asl narxi: {discounted_price}\n"
-#                 order_text += product_detail
-
-#                 if product_id not in product_ids_in_order:
-#                     product_ids_in_order.add(product_id)
-
-#                 # Save the order_user if it's the first product
-#                 if order_user is None:
-#                     order_user = serializer.save(
-#                         total_price=total_price, product_title=product_title
-#                     )
-
-#                 # Save each order item
-#                 Order.objects.create(
-#                     product=product,  # Use Product object directly
-#                     product_title=product_title,
-#                     count=product_count,
-#                     order=order_user,
-#                 )
-
-#             # Extract user details from the order_user
-#             name = order_user.name or "Noma'lum"
-#             phone = order_user.phone
-#             address = order_user.address or "Noma'lum"
-
-#             text = (
-#                 f"📦 Yangi zakaz tushdi 📦\n\n"
-#                 f"👤 Ism: {name}\n"
-#                 f"📞 Telefon Nomer: {phone}\n"
-#                 f"🏠 Manzil: {address}\n\n"
-#                 f"🛒 Zakaz qilingan tovarlar:\n\n{order_text}"
-#                 f"💰 Umumiy narxi: {total_price}\n"
-#             )
-
-#             # Load bot token and user IDs from environment variables
-#             token = os.getenv("TELEGRAM_BOT_TOKEN")
-#             user_ids = os.getenv("TELEGRAM_USER_IDS", "").split()
-
-#             for user_id in user_ids:
-#                 url = f"https://api.telegram.org/bot{token}/sendMessage"
-#                 params = {
-#                     "chat_id": user_id,
-#                     "text": text,
-#                     "parse_mode": "HTML"  # Enable HTML parsing for better formatting
-#                 }
-#                 requests.get(url, params=params)
-
-#             return Response(serializer.data, status=status.HTTP_201_CREATED)
-
-#         return Response(serializer.errors, status=status.HTTP_400_BAD_REQUEST)
-
-
-
 
 
 class SubmitOrderView(CreateAPIView):
@@ -806,91 +579,159 @@ class SubmitOrderView(CreateAPIView):
     @extend_schema(tags=["orders"])
     def post(self, request, *args, **kwargs):
         serializer = self.get_serializer(data=request.data)
-        if serializer.is_valid():
-            order_items = serializer.validated_data.get("order", [])
-            total_price = 0
-            order_text = ""
-            product_ids_in_order = set()
+        if not serializer.is_valid():
+            return Response(serializer.errors, status=status.HTTP_400_BAD_REQUEST)
 
-            # Initialize order_user
-            order_user = None
+        order_items = serializer.validated_data.get("order", [])
+        order_text, total_price = self._process_order_items(order_items)
 
-            for item in order_items:
-                product_id = item.get("product_id", 0)
-                product_count = item.get("count", 0)
+        order_user = serializer.save(total_price=total_price)
+        if order_user:
+            self._send_order_notification(order_user, order_text, total_price)
 
-                try:
-                    product = item.get("product_id")
-                    if isinstance(product, Product):  # Already a Product object
-                        product_id = product.id
-                        product_title = product.title_uz
-                    else:
-                        product = Product.objects.get(id=product_id)
-                        product_title = product.title_uz
-                except Product.DoesNotExist:
-                    raise Http404(f"Product with ID {product_id} not found")
+        return Response(serializer.data, status=status.HTTP_201_CREATED)
 
-                product_price = product.sales if product.sales else product.price
-                product_total_price = product_count * product_price
-                total_price += product_total_price
+    def _process_order_items(self, order_items):
+        order_text = ""
+        total_price = 0
 
-                product_detail = (
-                    f"🔹 Tovar: {product_title}\n🔸 Soni: {product_count}\n🔸 Narxi: {product_price}\n"
-                )
-                order_text += product_detail
+        for index, item in enumerate(order_items, start=1):
+            product, product_count = self._get_product_and_count(item)
+            product_price = product.sales or product.price
+            product_total_price = product_count * product_price
 
-                if product_id not in product_ids_in_order:
-                    product_ids_in_order.add(product_id)
-
-                # Save the order if it's the first product
-                if order_user is None:
-                    order_user = serializer.save(
-                        total_price=total_price, product_title=product_title
-                    )
-
-                Order.objects.create(
-                    product_id=product,
-                    product_title=product_title,
-                    count=product_count,
-                    order=order_user,
-                )
-
-            # Assuming OrderUser model has 'name', 'phone', and 'address' attributes
-            name = order_user.name
-            phone = order_user.phone
-            address = order_user.address
-
-            text = (
-                f"\n\n\n\n\n📦 Yangi zakaz tushdi 📦\n\n"
-                f"👤 Ism: {name}\n📞 Telefon Nomer: {phone}\n🏠 Manzil: {address}\n"
-                f"\n\n🛒 Zakaz qilingan tovarlar: \n\n{order_text}"
-                f"\n💰 Umumiy narxi: {total_price}"
+            total_price += product_total_price
+            order_text += self._format_product_detail(
+                index, product, product_count, product_price
             )
 
-            # Load bot token and user IDs from environment variables
-            token = os.getenv("TELEGRAM_BOT_TOKEN")
-            user_ids = os.getenv("TELEGRAM_USER_IDS", "").split()
+        return order_text, total_price
 
-            for user_id in user_ids:
-                url = f"https://api.telegram.org/bot{token}/sendMessage?chat_id={user_id}&text={text}"
-                requests.get(url)
+    def _get_product_and_count(self, item):
+        product_or_id = item.get("product_id", 0)
+        product_count = item.get("count", 0)
 
-            return Response(serializer.data, status=status.HTTP_201_CREATED)
+        if isinstance(product_or_id, Product):
+            product = product_or_id
+        else:
+            try:
+                product = Product.objects.get(id=product_or_id)
+            except Product.DoesNotExist:
+                raise Http404(f"Product with ID {product_or_id} not found")
 
-        return Response(serializer.errors, status=status.HTTP_400_BAD_REQUEST)
+        return product, product_count
+
+    def _format_product_detail(self, index, product, count, price):
+        return (
+            f"➊ {index}) <b>Mahsulot:</b> {product.title_uz}\n"
+            f"    <b>Soni:</b> {count} dona\n"
+            f"    <b>Narxi:</b> {price} so'm\n\n"
+        )
+
+    def _send_order_notification(self, order_user, order_text, total_price):
+        name = order_user.name or "Noma'lum"
+        phone = order_user.phone or "Noma'lum"
+        address = order_user.address or "Noma'lum"
+        text = (
+            f"<b>📦 Yangi Zakaz!</b> 📦\n\n"
+            f"<b>👤 Ism:</b> {name}\n\n"
+            f"<b>📞 Telefon:</b> {phone}\n\n"
+            f"<b>🏠 Manzil:</b> {address}\n\n"
+            f"<b>🛒 Mahsulotlar:</b>\n\n"
+            f"{order_text}"
+            f"<b>💰 Jami narx:</b> {total_price} so'm"
+        )
+
+        token = os.environ.get("BOT_TOKEN")
+        if not token:
+            print("BOT_TOKEN environment variable is not set.")
+            return
+
+        # user_ids = ["1237819772",]
+        user_ids = os.environ.get("USER_IDS").split(" ")
+
+        for user_id in user_ids:
+            response = self._send_telegram_message(token, user_id, text)
+
+    @staticmethod
+    def _send_telegram_message(token, user_id, text):
+        url = f"https://api.telegram.org/bot{token}/sendMessage"
+        payload = {
+            "chat_id": user_id,
+            "text": text,
+            "parse_mode": "HTML",
+        }
+        try:
+            response = requests.post(
+                url, json=payload
+            )
+            response.raise_for_status()
+            return response.json()
+        except requests.exceptions.HTTPError as http_err:
+            print(f"HTTP error occurred: {http_err}")
+        except Exception as err:
+            print(f"An error occurred: {err}")
 
 
 
+# optimizied version
+
+# added filter
 
 
 class OrderListView(ListAPIView):
-    queryset = OrderUser.objects.order_by("-created_at")
     serializer_class = OrderUserGetSerializer
-    parser_classes = (MultiPartParser, FormParser)
-    permission_classes = (IsAuthenticated,)
+    filter_backends = (DjangoFilterBackend,)
+    filterset_class = OrderUserFilter
+    pagination_class = CustomPagination
+
+    # permission_classes = (IsAuthenticated,)
+
+    def get_queryset(self):
+        """
+        Возвращает queryset объектов OrderUser, упорядоченных по дате создания,
+        с предварительной загрузкой связанных объектов Order.
+        """
+        return OrderUser.objects.prefetch_related("user_order").order_by("-created_at")
 
     @extend_schema(tags=["orders"])
     def get(self, request, *args, **kwargs):
+        """
+        Обрабатывает GET-запросы для получения постраничного и отфильтрованного списка заказов.
+        """
         return super().get(request, *args, **kwargs)
 
 
+class OrderUserAnalyticsView(RetrieveAPIView):
+    serializer_class = OrderUserAnalyticsSerializer
+
+    # permission_classes = [IsAuthenticated]
+
+    @extend_schema(
+        tags=["order-analytics"],
+        parameters=[
+            OpenApiParameter(
+                name="phone",
+                description="Phone number of the user",
+                required=True,
+                type=str,
+            )
+        ],
+    )
+    def get(self, request, *args, **kwargs):
+        phone = request.query_params.get("phone")
+        if not phone:
+            return Response({"detail": "Phone number is required"}, status=400)
+
+        try:
+            order_user = OrderUser.objects.filter(phone=phone).latest("created_at")
+        except OrderUser.DoesNotExist:
+            return Response(
+                {"detail": "OrderUser with this phone number does not exist"},
+                status=404,
+            )
+        except OrderUser.MultipleObjectsReturned:
+            order_user = OrderUser.objects.filter(phone=phone).latest("created_at")
+
+        serializer = self.get_serializer(order_user)
+        return Response(serializer.data)

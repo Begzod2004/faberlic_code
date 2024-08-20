@@ -194,10 +194,91 @@ class OrderUser(Model):
     product_title = CharField(max_length=255, blank=True, null=True)
     created_at = DateTimeField(auto_now_add=True)
 
+    @property
+    def total_sales_amount(self):
+        """
+        Рассчитывает общую сумму продаж для пользователя заказа.
+
+        Суммирует общие цены всех заказов, связанных с этим пользователем.
+
+        Возвращает:
+        int: Общая сумма продаж или 0, если нет заказов.
+        """
+        return (
+            self.orders.aggregate(total_amount=Sum("total_price"))["total_amount"] or 0
+        )
+
+    @property
+    def average_order_value(self):
+        """
+        Рассчитывает среднюю стоимость заказа для пользователя.
+
+        Делит общую сумму всех заказов на количество заказов.
+
+        Возвращает:
+        float: Средняя стоимость заказа или 0, если нет заказов.
+        """
+        orders = self.orders.all()
+        total_amount = (
+            orders.aggregate(total_amount=Sum("total_price"))["total_amount"] or 0
+        )
+        total_count = orders.count()
+        return total_amount / total_count if total_count > 0 else 0
+
+    @property
+    def recent_orders(self):
+        """
+        Возвращает последние заказы пользователя.
+
+        Сортирует заказы по дате создания в порядке убывания.
+
+        Возвращает:
+        QuerySet: Последние 5 заказов пользователя.
+        """
+        return self.user_orders.order_by("-created_at")[:5]
+
+    @property
+    def most_frequent_products(self):
+        """
+        Получает наиболее часто заказываемые пользователем продукты.
+
+        Возвращает список продуктов с их названиями, ценами и количеством.
+
+        Возвращает:
+        список: Список словарей с 'product_id', 'product_title', 'price' и 'count' для каждого продукта.
+        """
+        product_data = (
+            self.user_orders.select_related("product_id")
+            .values("product_id__title", "product_id__price", "product_id")
+            .annotate(count=Sum("count"))
+            .order_by("-count")
+        )
+
+        return [
+            {
+                "product_id": item["product_id"],
+                "product_title": item["product_id__title"],
+                "price": item["product_id__price"],
+                "count": item["count"],
+            }
+            for item in product_data
+        ]
+
+    @property
+    def orders_over_time(self):
+        """
+        Возвращает список дат, когда были созданы заказы, сгруппированных по месяцам.
+
+        Возвращает:
+        QuerySet: Список дат, сгруппированных по месяцам.
+        """
+        return self.user_orders.dates("created_at", "month")
+
 
 class Order(Model):
     product_id = ForeignKey(Product, on_delete=SET_NULL, null=True, blank=True)
     product_title = CharField(max_length=255, blank=True, null=True)
     count = IntegerField(null=True, blank=True)
-    order = ForeignKey(OrderUser, CASCADE, related_name="user_order")
+    # total_price = BigIntegerField()
+    order = ForeignKey(OrderUser, CASCADE, related_name="user_orders")
     created_at = DateTimeField(auto_now_add=True)

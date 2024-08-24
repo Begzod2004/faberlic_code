@@ -810,7 +810,7 @@ class OrderUserGetSerializer(serializers.ModelSerializer):
     def to_representation(self, instance):
         representation = super().to_representation(instance)
         representation["order"] = OrderSerializer(
-            instance.user_order.all(), many=True
+            instance.user_orders.all(), many=True
         ).data
 
         representation["created_at"] = instance.created_at.strftime("%Y-%m-%d")

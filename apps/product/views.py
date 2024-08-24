@@ -690,14 +690,12 @@ class OrderListView(ListAPIView):
     filterset_class = OrderUserFilter
     pagination_class = CustomPagination
 
-    # permission_classes = (IsAuthenticated,)
-
     def get_queryset(self):
         """
         Возвращает queryset объектов OrderUser, упорядоченных по дате создания,
         с предварительной загрузкой связанных объектов Order.
         """
-        return OrderUser.objects.prefetch_related("user_order").order_by("-created_at")
+        return OrderUser.objects.prefetch_related("user_orders").order_by("-created_at")
 
     @extend_schema(tags=["orders"])
     def get(self, request, *args, **kwargs):

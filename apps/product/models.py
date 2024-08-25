@@ -96,29 +96,29 @@ class Product(Model):
     updated_at = DateTimeField(auto_now=True)
 
     def save(self, *args, **kwargs):
-        if not self.pk:
-            self.slug = slugify(self.title)
+    if not self.pk:
+        self.slug = slugify(self.title)
 
-        while Product.objects.filter(slug=self.slug).exclude(pk=self.pk).exists():
-            if "-" in self.slug:
-                parts = self.slug.split("-")
-                if parts[-1].isdigit():
-                    count = int(parts[-1])
-                    self.slug = "-".join(parts[:-1]) + "-" + str(count + 1)
-                else:
-                    self.slug += "-1"
+    while Product.objects.filter(slug=self.slug).exclude(pk=self.pk).exists():
+        if "-" in self.slug:
+            parts = self.slug.split("-")
+            if parts[-1].isdigit():
+                count = int(parts[-1])
+                self.slug = "-".join(parts[:-1]) + "-" + str(count + 1)
             else:
                 self.slug += "-1"
+        else:
+            self.slug += "-1"
 
-        super().save(*args, **kwargs)
+    super().save(*args, **kwargs)
 
-        # Validate the number of images after saving
-        if self.images.count() > 3:
-            raise ValidationError("Cannot have more than 3 images for a product.")
+    # Validate the number of images after saving
+    if self.images.count() > 3:
+        raise ValidationError("Cannot have more than 3 images for a product.")
 
         # Save the related index_category object if it exists
-        if self.index_category:
-            self.index_category.save()
+        # if self.index_category:
+        #     self.index_category.save()  
 
 
     def clean(self):

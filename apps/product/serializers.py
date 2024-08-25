@@ -445,46 +445,43 @@ class ProductSerializer(SymbolValidationMixin, ModelSerializer):
         return product
 
     @transaction.atomic
-    def update(self, instance, validated_data):
-        instance.images.set(validated_data.pop("image_ids", []))
+def update(self, instance, validated_data):
+    instance.images.set(validated_data.pop("image_ids", []))
 
-        # Update simple fields
-        instance.title_uz = validated_data.get("title_uz", instance.title_uz)
-        instance.title_ru = validated_data.get("title_ru", instance.title_ru)
-        instance.price = validated_data.get("price", instance.price)
-        instance.sales = validated_data.get("sales", instance.sales)
-        instance.description_uz = validated_data.get("description_uz", instance.description_uz)
-        instance.description_ru = validated_data.get("description_ru", instance.description_ru)
-        instance.is_available = validated_data.get("is_available", instance.is_available)
-        instance.sub_category = validated_data.get("sub_category", instance.sub_category)
-        instance.stock = validated_data.get("stock", instance.stock)
-        instance.gender = validated_data.get("gender", instance.gender)  # Add gender update
+    # Update simple fields
+    instance.title_uz = validated_data.get("title_uz", instance.title_uz)
+    instance.title_ru = validated_data.get("title_ru", instance.title_ru)
+    instance.price = validated_data.get("price", instance.price)
+    instance.sales = validated_data.get("sales", instance.sales)
+    instance.description_uz = validated_data.get("description_uz", instance.description_uz)
+    instance.description_ru = validated_data.get("description_ru", instance.description_ru)
+    instance.is_available = validated_data.get("is_available", instance.is_available)
+    instance.sub_category = validated_data.get("sub_category", instance.sub_category)
+    instance.stock = validated_data.get("stock", instance.stock)
+    instance.gender = validated_data.get("gender", instance.gender)  # Update gender
 
-        # Update or create short_descriptions
-        short_descriptions_data = validated_data.pop("short_descriptions", [])
-        instance.short_descriptions.all().delete()
-        for short_description_data in short_descriptions_data:
-            ShortDescription.objects.create(product=instance, **short_description_data)
+    # Update or create short_descriptions
+    short_descriptions_data = validated_data.pop("short_descriptions", [])
+    instance.short_descriptions.all().delete()
+    for short_description_data in short_descriptions_data:
+        ShortDescription.objects.create(product=instance, **short_description_data)
 
-        # Update index_category
-        index_category_data = validated_data.get("index_category")
-        index_category_instance = instance.index_category
+    # Update index_category
+    index_category_data = validated_data.get("index_category")
+    if index_category_data:
+        if instance.index_category:
+            instance.index_category = IndexCategory.objects.update_or_create(defaults=index_category_data, id=instance.index_category.id)[0]
+        else:
+            instance.index_category = IndexCategory.objects.create(**index_category_data)
+    elif instance.index_category:
+        instance.index_category.delete()
+        instance.index_category = None
 
-        if index_category_data is not None:
-            index_category_instance = IndexCategory.objects.get(id=index_category_data.id)
-        elif index_category_instance:
-            index_category_instance.delete()
-            instance.index_category = None
+    instance.save()
+    instance.refresh_from_db()
 
-        if index_category_instance:
-            instance.index_category = index_category_instance
-
-        instance.save()
-
-        # Refresh from DB to get the updated values
-        instance.refresh_from_db()
-
-        return instance
+    return instance
+    
 
     @staticmethod
     def get_related_products(instance):

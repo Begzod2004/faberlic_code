@@ -716,24 +716,25 @@ class BannerSerializer(ModelSerializer):
         if product:
             return {"id": product.id, "title": product.title}
         return None
-
 class OrderSerializer(serializers.ModelSerializer):
     product_id = serializers.PrimaryKeyRelatedField(
         queryset=Product.objects.all(), write_only=True
     )
+    product_title = serializers.SerializerMethodField()
 
     class Meta:
         model = Order
-        fields = ("product_id", "count", "created_at")
-        extra_kwargs = {
-            "total_price": {"required": False},
-        }
+        fields = ("product_id", "count", "created_at", "product_title")
+
+    def get_product_title(self, instance):
+        # Safely access title_uz, handle None case
+        if instance.product_id is None:
+            return "Unknown Product"  # Default or fallback value
+        return getattr(instance.product_id, 'title_uz', 'Unknown Title')
 
     def to_representation(self, instance):
         representation = super().to_representation(instance)
-        representation[
-            "product_title"
-        ] = instance.product_id.title_uz  # Adjust field as needed
+        # product_title is handled by get_product_title, so no need to adjust it here
         return representation
 
 
@@ -750,9 +751,7 @@ class OrderUserSerializer(serializers.ModelSerializer):
         for order_item_data in order_data:
             Order.objects.create(
                 order=order_user,
-                product_id=order_item_data[
-                    "product_id"
-                ],  # Ensure product_id is passed as an integer
+                product_id=order_item_data["product_id"],  # Ensure product_id is passed as an integer
                 count=order_item_data["count"],
             )
         return order_user
@@ -791,9 +790,9 @@ class OrderUserGetSerializer(serializers.ModelSerializer):
             order_item_data["order"] = order_user
             order = Order.objects.create(**order_item_data)
 
-            if order.product_id.sales is not None:
+            if order.product_id and order.product_id.sales is not None:
                 total_price += order.product_id.sales * order.count
-            else:
+            elif order.product_id:
                 total_price += order.product_id.price * order.count
 
         order_user.total_price = total_price
@@ -822,7 +821,6 @@ class OrderUserAnalyticsSerializer(serializers.ModelSerializer):
     most_frequent_products = serializers.SerializerMethodField()
     orders_over_time = serializers.SerializerMethodField()
 
-
     class Meta:
         model = OrderUser
         fields = [
@@ -837,13 +835,18 @@ class OrderUserAnalyticsSerializer(serializers.ModelSerializer):
             "orders_over_time",
         ]
 
-
     def get_recent_orders(self, obj):
         recent_orders = obj.recent_orders
+        if not recent_orders:
+            return []
         return OrderSerializer(recent_orders, many=True).data
 
     def get_most_frequent_products(self, obj):
+        if obj.most_frequent_products is None:
+            return []  # Or another sensible default value
         return obj.most_frequent_products
 
     def get_orders_over_time(self, obj):
+        if obj.orders_over_time is None:
+            return []  # Or another sensible default value
         return [date.strftime("%Y-%m-%d") for date in obj.orders_over_time]

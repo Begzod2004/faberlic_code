@@ -170,6 +170,7 @@ class CategoryCountAPIView(APIView):
         return Response(serializer.data, status=status.HTTP_200_OK)
 
 
+
 class AllCategoryViewSet(mixins.ListModelMixin, GenericViewSet):
     serializer_class = AllCategorySerializer
     queryset = Category.objects.none()
@@ -184,6 +185,8 @@ class AllCategoryViewSet(mixins.ListModelMixin, GenericViewSet):
         # Initialize min and max prices for all categories
         min_price_all = float("inf")
         max_price_all = float("-inf")
+
+        category_data = []  # To store serialized category data
 
         for category in all_categories:
             # Calculate min and max prices for the current category
@@ -204,15 +207,18 @@ class AllCategoryViewSet(mixins.ListModelMixin, GenericViewSet):
             min_price_all = min(min_price_all, min_price_category)
             max_price_all = max(max_price_all, max_price_category)
 
-            # Use self.request directly in the serializer's context
+            # Serialize the category
             serializer = AllCategorySerializer(
                 category, context={"request": self.request}
             )
+            category_data.append(serializer.data)  # Add serialized data to list
 
-            # Add category data to the response
-          
         # Build the response data
-       
+        data = {
+            "categories": category_data,
+            "min_price_all": min_price_all,
+            "max_price_all": max_price_all,
+        }
 
         return Response(data, status=status.HTTP_200_OK)
 

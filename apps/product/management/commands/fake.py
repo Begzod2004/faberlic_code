@@ -103,6 +103,7 @@ class Command(BaseCommand):
         # Seed orders
         for _ in range(20):
             order = Order.objects.create(
+                products=random.choice(Product.objects.all()),
                 product_id=random.choice(Product.objects.all()),
                 product_title=fake_en.word(),
                 count=random.randint(1, 10),

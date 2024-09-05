@@ -1,8 +1,9 @@
 import os
-
+from django.db.models.functions import TruncDay
 import requests
+from rest_framework import generics
 from django.db import transaction
-from django.db.models import Max, Min
+from django.db.models import Sum, Avg, Count, Max, Min
 from django.http import Http404
 from django_filters.rest_framework import DjangoFilterBackend
 from drf_spectacular.utils import extend_schema, OpenApiParameter
@@ -39,7 +40,10 @@ from apps.product.serializers import (AllCategorySerializer, BannerSerializer,
                                       ProductSerializer,
                                       OrderUserAnalyticsSerializer,
                                       ShortDescriptionSerializer,
-                                      StockSerializer, SubCategorySerializer)
+                                      StockSerializer, SubCategorySerializer, 
+                                      UserSalesStatisticsSerializer,
+                                      CategoryStatisticsSerializer,
+                                      ProductStatisticsSerializer)
 from config.settings import MEDIA_ROOT
 
 from .filters import ProductFilter, ProductSearchFilter, OrderUserFilter
@@ -66,8 +70,6 @@ class SearchListApiView(ListAPIView):
         ).prefetch_related("images")
 
         return queryset
-
-
 
 
 # Image API
@@ -744,3 +746,93 @@ class OrderUserAnalyticsView(RetrieveAPIView):
 
         serializer = self.get_serializer(order_user)
         return Response(serializer.data)
+
+
+from django.db.models import Count, Sum, Avg, Min, Max
+from django.db.models.functions import TruncDay
+from rest_framework.views import APIView
+from rest_framework.response import Response
+
+class StatisticsAPIView(APIView):
+    def get(self, request, *args, **kwargs):
+        # Total revenue from all orders
+        total_revenue = OrderUser.objects.aggregate(Sum('total_price'))['total_price__sum'] or 0
+
+        # Average number of products per order
+        average_order_size = Order.objects.aggregate(average_size=Avg('count'))['average_size'] or 0
+
+        # Top 5 selling products
+        top_selling_products = Product.objects.annotate(
+            total_sold=Sum('order__count')
+        ).order_by('-total_sold')[:5].values('title', 'total_sold')
+
+        # Top 5 most valuable customers
+        most_valuable_customers = OrderUser.objects.annotate(
+            total_spent=Sum('total_price')
+        ).order_by('-total_spent')[:5].values('name', 'total_spent', 'phone')
+
+        # Orders and revenue per day
+        orders_per_day = OrderUser.objects.annotate(
+            day=TruncDay('created_at')
+        ).values('day').annotate(count=Count('id')).order_by('-day')
+
+        revenue_per_day = OrderUser.objects.annotate(
+            day=TruncDay('created_at')
+        ).values('day').annotate(daily_revenue=Sum('total_price')).order_by('-day')
+
+        # Average revenue per order
+        average_revenue_per_order = total_revenue / orders_per_day.count() if orders_per_day.count() > 0 else 0
+
+        # Repeat customers count and percentage
+        repeat_customers_data = OrderUser.objects.annotate(
+            orders_count=Count('id')
+        ).filter(orders_count__gt=1)
+        repeat_customers_count = repeat_customers_data.count()
+        procent_repeat_customers = (repeat_customers_count / OrderUser.objects.count() * 100) if OrderUser.objects.count() > 0 else 0
+
+        # First and last order date
+        first_order_date = OrderUser.objects.aggregate(Min('created_at'))['created_at__min']
+        last_order_date = OrderUser.objects.aggregate(Max('created_at'))['created_at__max']
+
+        return Response({
+            'total_revenue': total_revenue,
+            'average_order_size': average_order_size,
+            'top_selling_products': list(top_selling_products),
+            'most_valuable_customers': list(most_valuable_customers),
+            'orders_per_day': list(orders_per_day),
+            'revenue_per_day': list(revenue_per_day),
+            'average_revenue_per_order': average_revenue_per_order,
+            'repeat_customers_count': repeat_customers_count,
+            'procent_repeat_customers': procent_repeat_customers,
+            'first_order_date': first_order_date,
+            'last_order_date': last_order_date,
+        })
+
+
+class UserSalesStatisticsAPIView(ListAPIView):
+    queryset = OrderUser.objects.all()
+    serializer_class = UserSalesStatisticsSerializer
+    
+    def get_queryset(self):
+        """
+        This method enhances the default queryset by annotating it with
+        total_spent and orders_count to provide per-user sales statistics.
+        """
+        queryset = super().get_queryset()
+        queryset = queryset.annotate(
+            total_spent=Sum('total_price'),
+            orders_count=Count('user_orders')
+        ).order_by('-total_spent')  # Order by the highest spending users
+        return queryset
+
+
+class CategoryStatisticsAPIView(generics.ListAPIView):
+    queryset = Category.objects.all()
+    serializer_class = CategoryStatisticsSerializer
+ 
+
+class ProductStatisticsAPIView(APIView):
+    def get(self, request):
+        serializer = ProductStatisticsSerializer()
+        data = serializer.to_representation(None)  # Get the product stats
+        return Response(data)

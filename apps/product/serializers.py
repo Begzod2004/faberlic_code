@@ -2,7 +2,7 @@ from typing import Any, Dict, List, Optional
 
 from django.core.exceptions import ObjectDoesNotExist
 from django.db import transaction
-from django.db.models import Max, Min
+from django.db.models import Max, Min, Count
 from rest_framework import serializers
 from rest_framework.fields import ImageField, ListField, SerializerMethodField
 from rest_framework.relations import PrimaryKeyRelatedField
@@ -13,6 +13,8 @@ from apps.product.models import (Banner, Category,
                                  Product, ShortDescription, Stock, SubCategory)
 from apps.utils import SymbolValidationMixin
 from config import settings
+from drf_spectacular.utils import extend_schema_field
+
 
 
 class ImageModelSerializer(ModelSerializer):
@@ -716,6 +718,7 @@ class BannerSerializer(ModelSerializer):
         if product:
             return {"id": product.id, "title": product.title}
         return None
+        
 class OrderSerializer(serializers.ModelSerializer):
     product_id = serializers.PrimaryKeyRelatedField(
         queryset=Product.objects.all(), write_only=True
@@ -726,11 +729,11 @@ class OrderSerializer(serializers.ModelSerializer):
         model = Order
         fields = ("product_id", "count", "created_at", "product_title")
 
+    @extend_schema_field(serializers.CharField())
     def get_product_title(self, instance):
-        # Safely access title_uz, handle None case
         if instance.product_id is None:
-            return "Unknown Product"  # Default or fallback value
-        return getattr(instance.product_id, 'title_uz', 'Unknown Title')
+            return "Unknown Product"
+        return instance.product_id.title
 
     def to_representation(self, instance):
         representation = super().to_representation(instance)
@@ -850,3 +853,53 @@ class OrderUserAnalyticsSerializer(serializers.ModelSerializer):
         if obj.orders_over_time is None:
             return []  # Or another sensible default value
         return [date.strftime("%Y-%m-%d") for date in obj.orders_over_time]
+
+
+class UserSalesStatisticsSerializer(serializers.ModelSerializer):
+    total_spent = serializers.IntegerField()
+    orders_count = serializers.IntegerField()
+
+    class Meta:
+        model = OrderUser
+        fields = ('name', 'phone', 'total_spent', 'orders_count')
+
+
+
+class CategoryStatisticsSerializer(serializers.ModelSerializer):
+    sub_category_count = serializers.SerializerMethodField()
+    price_range = serializers.SerializerMethodField()
+
+    class Meta:
+        model = Category
+        fields = ('title', 'sub_category_count', 'price_range')
+
+    def get_sub_category_count(self, obj):
+        return SubCategory.objects.filter(category=obj).count()
+
+    def get_price_range(self, obj):
+        products = Product.objects.filter(sub_category__category=obj)
+        price_range = products.aggregate(
+            min_price=Min('price'),
+            max_price=Max('price')
+        )
+        return {
+            'min_price': price_range.get('min_price', 0),
+            'max_price': price_range.get('max_price', 0)
+        }
+
+
+class ProductStatisticsSerializer(serializers.Serializer):
+    total_products = serializers.IntegerField()
+    min_price = serializers.DecimalField(max_digits=10, decimal_places=2)
+    max_price = serializers.DecimalField(max_digits=10, decimal_places=2)
+
+    def to_representation(self, instance):
+        product_stats = Product.objects.aggregate(
+            total_products=Count('id'),
+            min_price=Min('price'),
+            max_price=Max('price')
+        )
+
+        product_stats['min_price'] = product_stats['min_price'] or 0
+        product_stats['max_price'] = product_stats['max_price'] or 0
+        return product_stats

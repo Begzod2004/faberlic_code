@@ -3,7 +3,11 @@ from rest_framework.routers import DefaultRouter
 
 from apps.product import views
 from apps.product.views import (AllCategoryViewSet, ProductCatalogView,
-                                SearchListApiView)
+                                SearchListApiView, StatisticsAPIView,
+                                UserSalesStatisticsAPIView,
+                                CategoryStatisticsAPIView,
+                                ProductStatisticsAPIView
+                                )
 
 router = DefaultRouter()
 
@@ -114,4 +118,11 @@ urlpatterns = [
         views.StockDetailUpdateDestroyView.as_view(),
         name="stock-retrieve-update-destroy",
     ),
+    path('statistics/', StatisticsAPIView.as_view(), name='statistics_api'
+    ),
+    path('user-sales-statistics/', UserSalesStatisticsAPIView.as_view(), name='user-sales-statistics'),
+    path('api/category-statistics/', CategoryStatisticsAPIView.as_view(), name='category-statistics'),
+    path('api/product-statistics/', ProductStatisticsAPIView.as_view(), name='product-statistics'),
+
+
 ]

@@ -1,5 +1,5 @@
 import os
-from django.db.models.functions import TruncDay
+from django.db.models.functions import TruncDay, Coalesce
 import requests
 from rest_framework import generics
 from django.db import transaction
@@ -745,7 +745,6 @@ class OrderUserAnalyticsView(RetrieveAPIView):
 
 
 
-
 class StatisticsAPIView(APIView):
     def get(self, request, *args, **kwargs):
         # Total revenue from all orders
@@ -754,10 +753,10 @@ class StatisticsAPIView(APIView):
         # Average number of products per order
         average_order_size = Order.objects.aggregate(average_size=Avg('count'))['average_size'] or 0
 
-        # Top 5 selling products
+        # Top 5 selling products with at least one order
         top_selling_products = Product.objects.annotate(
-            total_sold=Sum('order__count')
-        ).order_by('-total_sold')[:5].values('title', 'total_sold')
+            total_sold=Coalesce(Sum('order__count'), 0)
+        ).filter(total_sold__gt=0).order_by('-total_sold')[:5].values('title', 'total_sold')
 
         # Top 5 most valuable customers
         most_valuable_customers = OrderUser.objects.annotate(

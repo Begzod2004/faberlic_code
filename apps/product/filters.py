@@ -109,24 +109,6 @@ class ProductFilter(FilterSet):
             "order_by",
         ]
 
-    # Existing filter methods...
-
-    class Meta:
-        model = Product
-        fields = [
-            "category",
-            "sub_category",
-            "index_category",
-            "stock",
-            "min_price",
-            "max_price",
-            "title",
-            "has_sale",
-            "is_new",
-            "gender",
-            "order_by",
-        ]
-
 
 class ProductSearchFilter(FilterSet):
     class Meta:

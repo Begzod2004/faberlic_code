@@ -20,9 +20,10 @@ from rest_framework.renderers import JSONRenderer
 from rest_framework.response import Response
 from rest_framework.status import (HTTP_200_OK, HTTP_201_CREATED,
                                    HTTP_400_BAD_REQUEST)
-from rest_framework.views import APIView
 from rest_framework.viewsets import GenericViewSet
 from dotenv import load_dotenv
+from rest_framework.views import APIView
+from rest_framework.response import Response
 load_dotenv()
 
 from apps.product.models import (Banner, Category, 
@@ -52,24 +53,19 @@ from .pagination import CustomPagination
 from .serializers import OrderUserSerializer
 
 
+
 class SearchListApiView(ListAPIView):
-    serializer_class = ProductSearchSerializer
+    queryset = Product.objects.all().order_by("-id")
     renderer_classes = [JSONRenderer]
-    filter_backends = [DjangoFilterBackend]
+    serializer_class = ProductSearchSerializer
+    filter_backends = (SearchFilter, DjangoFilterBackend)
     filterset_class = ProductSearchFilter
+    search_fields = ("title_uz", "title_ru")
     pagination_class = CustomPagination
 
-    def get_queryset(self):
-        """
-        Возвращает продукты в порядке убывания ID с изображениями и необходимыми полями.
-        """
-        queryset = Product.objects.all().order_by("-id")
-
-        queryset = queryset.select_related(
-            "stock", "sub_category", "category"
-        ).prefetch_related("images")
-
-        return queryset
+    @extend_schema(tags=["catalog-search"])
+    def get(self, request, *args, **kwargs):
+        return super().get(request, *args, **kwargs)
 
 
 # Image API
@@ -748,10 +744,7 @@ class OrderUserAnalyticsView(RetrieveAPIView):
         return Response(serializer.data)
 
 
-from django.db.models import Count, Sum, Avg, Min, Max
-from django.db.models.functions import TruncDay
-from rest_framework.views import APIView
-from rest_framework.response import Response
+
 
 class StatisticsAPIView(APIView):
     def get(self, request, *args, **kwargs):

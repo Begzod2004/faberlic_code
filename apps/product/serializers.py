@@ -349,7 +349,7 @@ class ProductSearchSerializer(ModelSerializer):
         model = Product
         fields = (
             "id",
-            "title_uz",
+            "title_uz", 
             "title_ru",
             "price",
             "sales",

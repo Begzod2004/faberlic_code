@@ -395,6 +395,8 @@ class ProductSearchSerializer(ModelSerializer):
             return {"id": None, "image": None}
 
 
+
+
 class ProductSerializer(SymbolValidationMixin, ModelSerializer):
     sub_categories = SerializerMethodField()
     categories = SerializerMethodField()
@@ -448,8 +450,6 @@ class ProductSerializer(SymbolValidationMixin, ModelSerializer):
 
     @transaction.atomic
     def update(self, instance, validated_data):
-        instance.images.set(validated_data.pop("image_ids", []))
-
         # Update simple fields
         instance.title_uz = validated_data.get("title_uz", instance.title_uz)
         instance.title_ru = validated_data.get("title_ru", instance.title_ru)
@@ -471,19 +471,22 @@ class ProductSerializer(SymbolValidationMixin, ModelSerializer):
         # Update index_category
         index_category_data = validated_data.get("index_category")
         if index_category_data:
-            if instance.index_category:
-                instance.index_category = IndexCategory.objects.update_or_create(defaults=index_category_data, id=instance.index_category.id)[0]
-            else:
-                instance.index_category = IndexCategory.objects.create(**index_category_data)
+            instance.index_category = IndexCategory.objects.update_or_create(
+                defaults=index_category_data,
+                id=getattr(instance.index_category, 'id', None),
+            )[0]
         elif instance.index_category:
             instance.index_category.delete()
             instance.index_category = None
+
+        # Update image ids
+        image_ids = validated_data.pop("image_ids", [])
+        instance.images.set(image_ids)
 
         instance.save()
         instance.refresh_from_db()
 
         return instance
-        
 
     @staticmethod
     def get_related_products(instance):
@@ -491,18 +494,15 @@ class ProductSerializer(SymbolValidationMixin, ModelSerializer):
         if sub_category:
             category = sub_category.category
             if category:
-                related_products = Product.objects.filter(
-                    sub_category__category=category
-                ).exclude(id=instance.id)
-                return related_products
+                return Product.objects.filter(sub_category__category=category).exclude(id=instance.id)
         return None
 
     def to_representation(self, instance):
         representation = super().to_representation(instance)
 
+        # Adding related products
         related_products = self.get_related_products(instance)
-
-        if related_products is not None:
+        if related_products:
             related_products_data = [
                 {
                     "id": product.id,
@@ -512,95 +512,75 @@ class ProductSerializer(SymbolValidationMixin, ModelSerializer):
                     "price": product.price,
                     "sales": product.sales,
                     "slug": product.slug,
-                    "short_descriptions": ShortDescriptionSerializer(
-                        product.short_descriptions, many=True
-                    ).data,
+                    "short_descriptions": ShortDescriptionSerializer(product.short_descriptions, many=True).data,
                 }
                 for product in related_products
             ]
-            short_descriptions_data = ShortDescriptionSerializer(
-                instance.short_descriptions.all(), many=True
-            ).data
-            representation["short_descriptions"] = short_descriptions_data
-
             representation["related_products"] = related_products_data
-            representation["stock"] = self.get_stock(instance)
-            request_method = self.context["request"].method
-            if request_method != "GET":
-                representation.pop("created_at", None)
+
+        # Adding short descriptions
+        representation["short_descriptions"] = ShortDescriptionSerializer(
+            instance.short_descriptions.all(), many=True
+        ).data
+
+        # Customizing stock field
+        representation["stock"] = self.get_stock(instance)
+
+        # Remove created_at field for non-GET requests
+        if self.context["request"].method != "GET":
+            representation.pop("created_at", None)
 
         return representation
 
     @staticmethod
-    def get_stock(obj):
-        stock = obj.stock
-        if stock:
-            return {"id": stock.id, "stock_type": stock.title}
-        return None
+    def get_stock(instance):
+        stock = instance.stock
+        return {"id": stock.id, "stock_type": stock.title} if stock else None
 
-    def get_images(self, instance: "Product") -> List[Dict[str, Any]]:
+    def get_images(self, instance):
         request = self.context.get("request")
-
         if request:
-            images_data = instance.images.all()
-            serialized_images = []
-
-            for image in images_data:
-                image_url = request.build_absolute_uri(image.image.url)
-                serialized_images.append({"id": image.id, "image": image_url})
-
-            return serialized_images
-        else:
-            return []
+            return [
+                {"id": image.id, "image": request.build_absolute_uri(image.image.url)}
+                for image in instance.images.all()
+            ]
+        return []
 
     def get_fields(self):
         fields = super().get_fields()
         request_method = self.context["request"].method
-        if request_method not in ["GET"]:
+        if request_method != "GET":
             fields.pop("slug", None)
-        if request_method in ["GET"]:
-            fields.pop("sub_category", None)
-        if request_method in ["GET"]:
-            fields.pop("category", None)
-        if request_method in ["GET"]:
-            fields.pop("index_category", None)
         return fields
 
     @staticmethod
-    def get_sub_categories(obj: Product) -> Optional[Dict[str, str]]:
-        sub_category = getattr(obj, "sub_category", None)
-        if sub_category:
-            return {
-                "id": sub_category.id,
-                "title_uz": sub_category.title_uz,
-                "title_ru": sub_category.title_ru,
-            }
-        else:
-            raise ValueError("Sub-category is not available.")
+    def get_sub_categories(instance):
+        sub_category = instance.sub_category
+        return {
+            "id": sub_category.id,
+            "title_uz": sub_category.title_uz,
+            "title_ru": sub_category.title_ru,
+        } if sub_category else None
 
     @staticmethod
-    def get_categories(obj: Product) -> Optional[Dict[str, str]]:
-        category = getattr(obj, "category", None)
-        if category:
-            return {
-                "id": category.id,
-                "title_uz": category.title_uz,
-                "title_ru": category.title_ru,
-            }
-        else:
-            raise ValueError("Category is not available.")
+    def get_categories(instance):
+        category = instance.category
+        return {
+            "id": category.id,
+            "title_uz": category.title_uz,
+            "title_ru": category.title_ru,
+        } if category else None
 
     @staticmethod
-    def get_index_categories(obj: Product) -> Optional[Dict[str, str]]:
-        index_category = getattr(obj, "index_category", None)
-        if index_category:
-            return {
-                "id": getattr(index_category, "id", None),
-                "title_uz": getattr(index_category, "title_uz", None),
-                "title_ru": getattr(index_category, "title_ru", None),
-            }
-        else:
-            return None
+    def get_index_categories(instance):
+        index_category = instance.index_category
+        return {
+            "id": index_category.id,
+            "title_uz": index_category.title_uz,
+            "title_ru": index_category.title_ru,
+        } if index_category else None
+
+
 
 
 class ProductCatalogSerializer(ModelSerializer):

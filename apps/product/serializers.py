@@ -396,6 +396,7 @@ class ProductSearchSerializer(ModelSerializer):
 
 
 class ProductSerializer(SymbolValidationMixin, ModelSerializer):
+    related_products = SerializerMethodField()
     sub_categories = SerializerMethodField()
     categories = SerializerMethodField()
     index_categories = SerializerMethodField()
@@ -431,6 +432,7 @@ class ProductSerializer(SymbolValidationMixin, ModelSerializer):
             "created_at",
             "slug",
             "gender",  # Gender field added here
+            "related_products",
         )
 
     def create(self, validated_data):
@@ -485,24 +487,27 @@ class ProductSerializer(SymbolValidationMixin, ModelSerializer):
 
         return instance
 
+
+    
+
     @staticmethod
     def get_related_products(instance):
         sub_category = instance.sub_category
         if sub_category:
             category = sub_category.category
             if category:
-                related_products = Product.objects.filter(sub_category__category=category).exclude(id=instance.id).select_related('sub_category','category')
-            return related_products
+                related_products = Product.objects.filter(
+                    sub_category__category=category
+                ).exclude(id=instance.id)
+                return related_products
         return None
-
 
     def to_representation(self, instance):
         representation = super().to_representation(instance)
 
         related_products = self.get_related_products(instance)
 
-
-        if related_products and related_products.exists():
+        if related_products is not None:
             related_products_data = [
                 {
                     "id": product.id,
@@ -513,63 +518,23 @@ class ProductSerializer(SymbolValidationMixin, ModelSerializer):
                     "sales": product.sales,
                     "slug": product.slug,
                     "short_descriptions": ShortDescriptionSerializer(
-                        product.short_descriptions.all(), many=True
+                        product.short_descriptions, many=True
                     ).data,
                 }
                 for product in related_products
             ]
+            short_descriptions_data = ShortDescriptionSerializer(
+                instance.short_descriptions.all(), many=True
+            ).data
+            representation["short_descriptions"] = short_descriptions_data
             representation["related_products"] = related_products_data
-        else:
-            representation["related_products"] = []
-
-
-        short_descriptions_data = ShortDescriptionSerializer(
-            instance.short_descriptions.all() or [], many=True
-        ).data
-        representation["short_descriptions"] = short_descriptions_data
-        try:
             representation["stock"] = self.get_stock(instance)
-        except Exception as e:
-            representation["stock"] = None
+            request_method = self.context["request"].method
+            if request_method != "GET":
+                representation.pop("created_at", None)
         return representation
 
 
-
-
-    # def to_representation(self, instance):
-    #     representation = super().to_representation(instance)
-
-    #     # Related productsni olish
-    #     related_products = self.get_related_products(instance)
-
-    #     if related_products is not None and related_products.exists():
-    #         related_products_data = [
-    #             {
-    #                 "id": product.id,
-    #                 "title_uz": product.title_uz,
-    #                 "title_ru": product.title_ru,
-    #                 "images": self.get_images(product),
-    #                 "price": product.price,
-    #                 "sales": product.sales,
-    #                 "slug": product.slug,
-    #                 "short_descriptions": ShortDescriptionSerializer(
-    #                     product.short_descriptions, many=True
-    #                 ).data,
-    #             }
-    #             for product in related_products
-    #         ]
-    #         representation["related_products"] = related_products_data
-    #     else:
-    #         representation["related_products"] = []
-
-    #     short_descriptions_data = ShortDescriptionSerializer(
-    #         instance.short_descriptions.all(), many=True
-    #     ).data
-    #     representation["short_descriptions"] = short_descriptions_data
-
-    #     representation["stock"] = self.get_stock(instance)
-
-    #     return representation
 
     @staticmethod
     def get_stock(obj):

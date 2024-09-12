@@ -430,7 +430,7 @@ class ProductSerializer(SymbolValidationMixin, ModelSerializer):
             "short_descriptions",
             "created_at",
             "slug",
-            "gender",  # Add gender field here
+            "gender",  # Gender field added here
         )
 
     def create(self, validated_data):
@@ -472,7 +472,8 @@ class ProductSerializer(SymbolValidationMixin, ModelSerializer):
         index_category_data = validated_data.get("index_category")
         if index_category_data:
             if instance.index_category:
-                instance.index_category = IndexCategory.objects.update_or_create(defaults=index_category_data, id=instance.index_category.id)[0]
+                instance.index_category = IndexCategory.objects.update_or_create(
+                    defaults=index_category_data, id=instance.index_category.id)[0]
             else:
                 instance.index_category = IndexCategory.objects.create(**index_category_data)
         elif instance.index_category:
@@ -483,7 +484,6 @@ class ProductSerializer(SymbolValidationMixin, ModelSerializer):
         instance.refresh_from_db()
 
         return instance
-        
 
     @staticmethod
     def get_related_products(instance):
@@ -500,9 +500,10 @@ class ProductSerializer(SymbolValidationMixin, ModelSerializer):
     def to_representation(self, instance):
         representation = super().to_representation(instance)
 
+        # Related productsni olish
         related_products = self.get_related_products(instance)
 
-        if related_products is not None:
+        if related_products is not None and related_products.exists():
             related_products_data = [
                 {
                     "id": product.id,
@@ -518,16 +519,16 @@ class ProductSerializer(SymbolValidationMixin, ModelSerializer):
                 }
                 for product in related_products
             ]
-            short_descriptions_data = ShortDescriptionSerializer(
-                instance.short_descriptions.all(), many=True
-            ).data
-            representation["short_descriptions"] = short_descriptions_data
-
             representation["related_products"] = related_products_data
-            representation["stock"] = self.get_stock(instance)
-            request_method = self.context["request"].method
-            if request_method != "GET":
-                representation.pop("created_at", None)
+        else:
+            representation["related_products"] = []
+
+        short_descriptions_data = ShortDescriptionSerializer(
+            instance.short_descriptions.all(), many=True
+        ).data
+        representation["short_descriptions"] = short_descriptions_data
+
+        representation["stock"] = self.get_stock(instance)
 
         return representation
 
@@ -601,6 +602,8 @@ class ProductSerializer(SymbolValidationMixin, ModelSerializer):
             }
         else:
             return None
+
+
 
 
 class ProductCatalogSerializer(ModelSerializer):
@@ -873,9 +876,12 @@ class CategoryStatisticsSerializer(serializers.ModelSerializer):
         model = Category
         fields = ('title', 'sub_category_count', 'price_range')
 
+    @extend_schema_field(str)
     def get_sub_category_count(self, obj):
         return SubCategory.objects.filter(category=obj).count()
 
+
+    @extend_schema_field(str)
     def get_price_range(self, obj):
         products = Product.objects.filter(sub_category__category=obj)
         price_range = products.aggregate(

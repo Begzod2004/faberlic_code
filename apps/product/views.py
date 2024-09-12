@@ -746,6 +746,9 @@ class OrderUserAnalyticsView(RetrieveAPIView):
 
 
 class StatisticsAPIView(APIView):
+     
+
+
     def get(self, request, *args, **kwargs):
         # Total revenue from all orders
         total_revenue = OrderUser.objects.aggregate(Sum('total_price'))['total_price__sum'] or 0
@@ -824,7 +827,9 @@ class CategoryStatisticsAPIView(generics.ListAPIView):
  
 
 class ProductStatisticsAPIView(APIView):
+    serializer_class = ProductStatisticsSerializer
+
     def get(self, request):
-        serializer = ProductStatisticsSerializer()
+        serializer = self.serializer_class()
         data = serializer.to_representation(None)  # Get the product stats
         return Response(data)

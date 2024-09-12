@@ -495,13 +495,14 @@ class ProductSerializer(SymbolValidationMixin, ModelSerializer):
             return related_products
         return None
 
+
     def to_representation(self, instance):
         representation = super().to_representation(instance)
 
-        # Related productsni olish
         related_products = self.get_related_products(instance)
 
-        if related_products is not None and related_products.exists():
+
+        if related_products and related_products.exists():
             related_products_data = [
                 {
                     "id": product.id,
@@ -512,7 +513,7 @@ class ProductSerializer(SymbolValidationMixin, ModelSerializer):
                     "sales": product.sales,
                     "slug": product.slug,
                     "short_descriptions": ShortDescriptionSerializer(
-                        product.short_descriptions, many=True
+                        product.short_descriptions.all(), many=True
                     ).data,
                 }
                 for product in related_products
@@ -521,14 +522,54 @@ class ProductSerializer(SymbolValidationMixin, ModelSerializer):
         else:
             representation["related_products"] = []
 
+
         short_descriptions_data = ShortDescriptionSerializer(
-            instance.short_descriptions.all(), many=True
+            instance.short_descriptions.all() or [], many=True
         ).data
         representation["short_descriptions"] = short_descriptions_data
-
-        representation["stock"] = self.get_stock(instance)
-
+        try:
+            representation["stock"] = self.get_stock(instance)
+        except Exception as e:
+            representation["stock"] = None
         return representation
+
+
+
+
+    # def to_representation(self, instance):
+    #     representation = super().to_representation(instance)
+
+    #     # Related productsni olish
+    #     related_products = self.get_related_products(instance)
+
+    #     if related_products is not None and related_products.exists():
+    #         related_products_data = [
+    #             {
+    #                 "id": product.id,
+    #                 "title_uz": product.title_uz,
+    #                 "title_ru": product.title_ru,
+    #                 "images": self.get_images(product),
+    #                 "price": product.price,
+    #                 "sales": product.sales,
+    #                 "slug": product.slug,
+    #                 "short_descriptions": ShortDescriptionSerializer(
+    #                     product.short_descriptions, many=True
+    #                 ).data,
+    #             }
+    #             for product in related_products
+    #         ]
+    #         representation["related_products"] = related_products_data
+    #     else:
+    #         representation["related_products"] = []
+
+    #     short_descriptions_data = ShortDescriptionSerializer(
+    #         instance.short_descriptions.all(), many=True
+    #     ).data
+    #     representation["short_descriptions"] = short_descriptions_data
+
+    #     representation["stock"] = self.get_stock(instance)
+
+    #     return representation
 
     @staticmethod
     def get_stock(obj):
@@ -907,3 +948,5 @@ class ProductStatisticsSerializer(serializers.Serializer):
         product_stats['min_price'] = product_stats['min_price'] or 0
         product_stats['max_price'] = product_stats['max_price'] or 0
         return product_stats
+
+

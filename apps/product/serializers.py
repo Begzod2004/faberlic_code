@@ -491,10 +491,8 @@ class ProductSerializer(SymbolValidationMixin, ModelSerializer):
         if sub_category:
             category = sub_category.category
             if category:
-                related_products = Product.objects.filter(
-                    sub_category__category=category
-                ).exclude(id=instance.id)
-                return related_products
+                related_products = Product.objects.filter(sub_category__category=category).exclude(id=instance.id).select_related('sub_category','category')
+            return related_products
         return None
 
     def to_representation(self, instance):
